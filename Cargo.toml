@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "remote-trait-object",
+    "remote-trait-object-tests",
+]
