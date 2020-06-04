@@ -16,7 +16,7 @@
 
 use super::mod_main::main_like as main_main;
 use super::mod_ping::main_like as ping_main;
-use crossbeam::channel;
+use crate::connection::{create_connection, ConnectionEnd};
 
 /// There are thee entities: commander, main module and ping module.
 /// Commander sends "start" message to the main module.
@@ -25,13 +25,18 @@ use crossbeam::channel;
 /// If the main module received "pong" response, send "pong received" to the commander.
 #[test]
 fn ping() {
-    let (cmd_sender, cmd_receiver) = channel::bounded(1);
-    let (main_sender, main_receiver) = channel::bounded(1);
-    let (ping_sender, ping_receiver) = channel::bounded(1);
-    main_main(Vec::new(), main_receiver, cmd_sender, ping_sender);
-    ping_main(Vec::new(), ping_receiver, main_sender.clone());
+    let (main_to_cmd, cmd_to_main) = create_connection();
+    let (main_to_ping, ping_to_main) = create_connection();
 
-    main_sender.send("start".to_string()).unwrap();
-    let response = cmd_receiver.recv().unwrap();
-    assert_eq!(response, "pong received".to_string());
+    main_main(Vec::new(), main_to_cmd, main_to_ping);
+    ping_main(Vec::new(), ping_to_main);
+
+    let ConnectionEnd {
+        sender: to_main,
+        receiver: from_main,
+    } = cmd_to_main;
+
+    to_main.send("request:start".to_string()).unwrap();
+    let response = from_main.recv().unwrap();
+    assert_eq!(response, "response:pong received".to_string());
 }

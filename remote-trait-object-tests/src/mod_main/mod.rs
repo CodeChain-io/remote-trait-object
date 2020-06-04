@@ -14,36 +14,65 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crossbeam::channel::{Receiver, Sender};
-use std::thread;
+use crate::connection::ConnectionEnd;
+use parking_lot::Mutex;
+use remote_trait_object::Port;
+use std::sync::Arc;
 
-pub fn main_like(
-    _args: Vec<String>,
-    receiver: Receiver<String>,
-    cmd_sender: Sender<String>,
-    ping_sender: Sender<String>,
-) {
-    start_server(receiver, cmd_sender, ping_sender);
+pub fn main_like(_args: Vec<String>, with_cmd: ConnectionEnd, with_ping: ConnectionEnd) {
+    start_server(with_cmd, with_ping);
 }
 
-fn start_server(
-    receiver: Receiver<String>,
-    cmd_sender: Sender<String>,
-    ping_sender: Sender<String>,
-) {
-    thread::Builder::new()
-        .name("main module".into())
-        .spawn(move || loop {
-            let msg = receiver.recv().unwrap();
+struct Context {
+    cmd_port: Mutex<Option<Port>>,
+    ping_port: Mutex<Option<Port>>,
+}
 
+impl Context {
+    fn new() -> Self {
+        Context {
+            cmd_port: Default::default(),
+            ping_port: Default::default(),
+        }
+    }
+}
+
+fn start_server(with_cmd: ConnectionEnd, with_ping: ConnectionEnd) {
+    let ctx = Arc::new(Context::new());
+    let cmd_port = {
+        let ConnectionEnd {
+            receiver: from_cmd,
+            sender: to_cmd,
+        } = with_cmd;
+        let cloned_ctx = Arc::clone(&ctx);
+        Port::new(to_cmd, from_cmd, move |msg| {
             if msg == "start" {
-                ping_sender.send("ping".to_string()).unwrap();
-            } else if msg == "pong" {
-                cmd_sender.send("pong received".to_string()).unwrap();
-                return;
+                let ping_port = cloned_ctx.ping_port.lock();
+                let pong = ping_port.as_ref().unwrap().call("ping".to_string());
+                if pong == "pong" {
+                    "pong received".to_string()
+                } else {
+                    format!("unexpected {} received", pong)
+                }
             } else {
-                return;
+                panic!("unexpected msg in main module from cmd {}", msg)
             }
         })
-        .unwrap();
+    };
+
+    let ping_port = {
+        let ConnectionEnd {
+            receiver: from_ping,
+            sender: to_ping,
+        } = with_ping;
+        Port::new(to_ping, from_ping, |msg| {
+            panic!(
+                "main do not expect receiving packet from ping. msg: {}",
+                msg
+            );
+        })
+    };
+
+    *ctx.cmd_port.lock() = Some(cmd_port);
+    *ctx.ping_port.lock() = Some(ping_port);
 }

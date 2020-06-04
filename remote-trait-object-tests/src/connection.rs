@@ -14,23 +14,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::connection::ConnectionEnd;
-use remote_trait_object::Port;
+#[cfg(test)]
+use crossbeam::channel;
+use crossbeam::channel::{Receiver, Sender};
 
-pub fn main_like(_args: Vec<String>, with_main: ConnectionEnd) {
-    start_server(with_main);
+#[cfg(test)]
+pub fn create_connection() -> (ConnectionEnd, ConnectionEnd) {
+    let (send_to_a, recv_in_a) = channel::bounded(1);
+    let (send_to_b, recv_in_b) = channel::bounded(1);
+
+    (
+        ConnectionEnd {
+            sender: send_to_a,
+            receiver: recv_in_b,
+        },
+        ConnectionEnd {
+            sender: send_to_b,
+            receiver: recv_in_a,
+        },
+    )
 }
 
-fn start_server(with_main: ConnectionEnd) {
-    let ConnectionEnd {
-        receiver: from_main,
-        sender: to_main,
-    } = with_main;
-    Port::new(to_main, from_main, |msg| {
-        if msg == "ping" {
-            "pong".to_string()
-        } else {
-            panic!("Unexpected message in ping from main {}", msg)
-        }
-    });
+pub struct ConnectionEnd {
+    pub sender: Sender<String>,
+    pub receiver: Receiver<String>,
 }

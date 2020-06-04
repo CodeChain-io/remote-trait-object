@@ -18,7 +18,7 @@ mod client;
 mod server;
 
 use crate::ipc::multiplex::{MultiplexResult, Multiplexer};
-use std::sync::mpsc::{Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender};
 
 pub struct Port {
     _multiplexer: Multiplexer,

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::mpsc::{channel, Receiver};
+use crossbeam::channel::{self, Receiver};
 use std::thread;
 
 pub struct MultiplexResult {
@@ -29,8 +29,8 @@ pub struct Multiplexer {
 
 impl Multiplexer {
     pub fn multiplex(ipc_recv: Receiver<String>) -> MultiplexResult {
-        let (request_send, request_recv) = channel();
-        let (response_send, response_recv) = channel();
+        let (request_send, request_recv) = channel::bounded(1);
+        let (response_send, response_recv) = channel::bounded(1);
 
         let receiver_thread = thread::Builder::new()
             .name("multiplexer".into())
