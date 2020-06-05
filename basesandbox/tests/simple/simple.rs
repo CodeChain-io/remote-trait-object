@@ -19,7 +19,7 @@ use cbsb::execution::executee;
 use cbsb::ipc::{IpcRecv, IpcSend};
 use std::time::Duration;
 
-type IpcScheme = cbsb::ipc::servo_channel::ServoChannel;
+type IpcScheme = cbsb::ipc::unix_socket::DomainSocket;
 
 #[cfg(all(unix, target_arch = "x86_64"))]
 fn main() -> Result<(), String> {

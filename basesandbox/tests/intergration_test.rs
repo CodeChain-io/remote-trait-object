@@ -25,7 +25,7 @@ use cbsb::ipc::{IpcRecv, IpcSend, Terminate};
 use std::sync::{Arc, Barrier};
 use std::thread;
 
-type IpcScheme = cbsb::ipc::servo_channel::ServoChannel;
+type IpcScheme = cbsb::ipc::unix_socket::DomainSocket;
 
 // CI server is really slow for this. Usually 10 is ok.
 const TIMEOUT: std::time::Duration = std::time::Duration::from_millis(10000);
