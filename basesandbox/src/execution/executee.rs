@@ -35,7 +35,6 @@ impl<T: Ipc> Context<T> {
     /// Tell the executor that I will exit asap after this byebye handshake.
     pub fn terminate(self) {
         let ipc = self.ipc.unwrap();
-        ipc.send(b"#TERMINATE\0");
-        assert_eq!(ipc.recv(Some(std::time::Duration::from_millis(1000))).unwrap(), b"#TERMINATE\0");
+        assert_eq!(ipc.recv(Some(std::time::Duration::from_millis(500))).unwrap(), b"#TERMINATE\0");
     }
 }

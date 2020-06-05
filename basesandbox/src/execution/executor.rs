@@ -105,8 +105,8 @@ impl<T: Executor> Drop for ExecutorDropper<T> {
 
 /// declaration order of fields is important because of Drop dependencies
 pub struct Context<T: Ipc, E: Executor> {
-    pub ipc: T,
     _child: ExecutorDropper<E>,
+    pub ipc: T,
 }
 
 /// id must be unique for each instance.
@@ -131,8 +131,6 @@ impl<T: Ipc, E: Executor> Context<T, E> {
     /// Call this when you're sure that the excutee is ready to teminate; i.e.
     /// it will call excutee::terminate() asap.
     pub fn terminate(self) {
-        let signal = self.ipc.recv(Some(Duration::from_millis(1000))).unwrap();
-        assert_eq!(signal, b"#TERMINATE\0");
         self.ipc.send(b"#TERMINATE\0");
     }
 }

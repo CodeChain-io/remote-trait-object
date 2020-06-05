@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub mod domain_socket;
+pub mod unix_socket;
 pub mod intra;
 pub mod multiplex;
 pub mod servo_channel;
@@ -42,6 +42,8 @@ pub trait IpcRecv: Send {
     type Terminator: Terminate;
 
     /// Returns Err only for the timeout or termination wake-up(otherwise panic)
+    /// Note that it is not guaranteed to receive remaining data after the counter end has
+    /// been closed earlier. You should assume that you will receive Err(Terminate) in such case.
     fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError>;
     /// Create a terminate switch that can be sent to another thread
     fn create_terminator(&self) -> Self::Terminator;
