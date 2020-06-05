@@ -260,3 +260,36 @@ fn multiplexer() {
     drop(multiplxer1);
     drop(multiplxer2);
 }
+
+#[test]
+fn bidirection() {
+    let n = 10;
+    let (d1, d2) = setup_ipc::<IpcScheme>();
+    let (s1, r1) = d1.split();
+    let (s2, r2) = d2.split();
+
+    fn fun_recv(n: usize, recv: impl IpcRecv) {
+        for i in 0..n {
+            let r = recv.recv(None).unwrap();
+            assert!(r.iter().all(|&x| x == (i % 256) as u8));
+        }
+    }
+
+    fn fun_send(n: usize, send: impl IpcSend) {
+        for i in 0..n {
+            let data = vec![(i % 256) as u8; 300000];
+            send.send(&data);
+            thread::sleep(std::time::Duration::from_millis(10))
+        }
+    }
+
+    let t1 = thread::spawn(move || fun_recv(n, r1));
+    let t2 = thread::spawn(move || fun_recv(n, r2));
+    let t3 = thread::spawn(move || fun_send(n, s1));
+    let t4 = thread::spawn(move || fun_send(n, s2));
+
+    t1.join().unwrap();
+    t2.join().unwrap();
+    t3.join().unwrap();
+    t4.join().unwrap();
+}
