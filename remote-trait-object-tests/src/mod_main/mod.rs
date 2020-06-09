@@ -19,8 +19,17 @@ use parking_lot::Mutex;
 use remote_trait_object::Port;
 use std::sync::Arc;
 
-pub fn main_like(_args: Vec<String>, with_cmd: ConnectionEnd, with_ping: ConnectionEnd) {
-    start_server(with_cmd, with_ping);
+pub fn main_like(
+    _args: Vec<String>,
+    with_cmd: ConnectionEnd,
+    with_ping: ConnectionEnd,
+) -> MainModule {
+    let context = start_server(with_cmd, with_ping);
+    MainModule { _context: context }
+}
+
+pub struct MainModule {
+    _context: Arc<Context>,
 }
 
 struct Context {
@@ -37,7 +46,7 @@ impl Context {
     }
 }
 
-fn start_server(with_cmd: ConnectionEnd, with_ping: ConnectionEnd) {
+fn start_server(with_cmd: ConnectionEnd, with_ping: ConnectionEnd) -> Arc<Context> {
     let ctx = Arc::new(Context::new());
     let cmd_port = {
         let ConnectionEnd {
@@ -75,4 +84,5 @@ fn start_server(with_cmd: ConnectionEnd, with_ping: ConnectionEnd) {
 
     *ctx.cmd_port.lock() = Some(cmd_port);
     *ctx.ping_port.lock() = Some(ping_port);
+    ctx
 }
