@@ -17,11 +17,18 @@
 use crate::connection::ConnectionEnd;
 use remote_trait_object::Port;
 
-pub fn main_like(_args: Vec<String>, with_main: ConnectionEnd) {
-    start_server(with_main);
+pub fn main_like(_args: Vec<String>, with_main: ConnectionEnd) -> PingModule {
+    let port_to_main = start_server(with_main);
+    PingModule {
+        _port_to_main: port_to_main,
+    }
 }
 
-fn start_server(with_main: ConnectionEnd) {
+pub struct PingModule {
+    _port_to_main: Port,
+}
+
+fn start_server(with_main: ConnectionEnd) -> Port {
     let ConnectionEnd {
         receiver: from_main,
         sender: to_main,
@@ -32,5 +39,5 @@ fn start_server(with_main: ConnectionEnd) {
         } else {
             panic!("Unexpected message in ping from main {}", msg)
         }
-    });
+    })
 }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crossbeam::channel::{self, Receiver};
+use crossbeam::channel::{self, Receiver, Sender};
 use std::thread;
 
 pub struct MultiplexResult {
@@ -24,18 +24,37 @@ pub struct MultiplexResult {
 }
 
 pub struct Multiplexer {
-    _receiver_thread: Option<thread::JoinHandle<()>>,
+    receiver_thread: Option<thread::JoinHandle<()>>,
+    termination_send: Sender<()>,
 }
 
 impl Multiplexer {
     pub fn multiplex(ipc_recv: Receiver<String>) -> MultiplexResult {
         let (request_send, request_recv) = channel::bounded(1);
         let (response_send, response_recv) = channel::bounded(1);
+        let (termination_send, termination_recv) = channel::bounded(0);
 
         let receiver_thread = thread::Builder::new()
             .name("multiplexer".into())
             .spawn(move || loop {
-                let original_message = ipc_recv.recv().unwrap();
+                let original_message = select! {
+                    recv(ipc_recv) -> msg => match msg {
+                        Ok(msg) => msg,
+                        Err(err) => {
+                            // FIXME: use a logger
+                            println!("ipc_recv is closed in multiplex {}", err);
+                            return;
+                        }
+                    },
+                    recv(termination_recv) -> msg => match msg {
+                        Ok(_) => {
+                            return;
+                        },
+                        Err(err) => {
+                            panic!("Multiplexer is dropped before receiver_thread {}", err);
+                        }
+                    }
+                };
                 // FIXME: parsing is not the role of the Multiplexer.
                 let message = parse(original_message.clone());
                 match message {
@@ -52,9 +71,23 @@ impl Multiplexer {
             request_recv,
             response_recv,
             multiplexer: Multiplexer {
-                _receiver_thread: Some(receiver_thread),
+                termination_send,
+                receiver_thread: Some(receiver_thread),
             },
         }
+    }
+
+    pub fn shutdown(mut self) {
+        if let Err(_err) = self.termination_send.send(()) {
+            // thread is already cleared;
+        }
+        self.receiver_thread.take().unwrap().join().unwrap();
+    }
+}
+
+impl Drop for Multiplexer {
+    fn drop(&mut self) {
+        assert!(self.receiver_thread.is_none(), "Please call shutdown");
     }
 }
 

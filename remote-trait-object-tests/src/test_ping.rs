@@ -25,18 +25,30 @@ use crate::connection::{create_connection, ConnectionEnd};
 /// If the main module received "pong" response, send "pong received" to the commander.
 #[test]
 fn ping() {
+    // FIXME: use a logger
+    println!("ping test start");
     let (main_to_cmd, cmd_to_main) = create_connection();
     let (main_to_ping, ping_to_main) = create_connection();
 
-    main_main(Vec::new(), main_to_cmd, main_to_ping);
-    ping_main(Vec::new(), ping_to_main);
+    // FIXME: use a logger
+    println!("Call main_main");
+    let _main_module = main_main(Vec::new(), main_to_cmd, main_to_ping);
+    // FIXME: use a logger
+    println!("Call ping_main");
+    let _ping_module = ping_main(Vec::new(), ping_to_main);
 
     let ConnectionEnd {
         sender: to_main,
         receiver: from_main,
     } = cmd_to_main;
 
+    // FIXME: use a logger
+    println!("Send start cmd");
     to_main.send("request:start".to_string()).unwrap();
+    // FIXME: use a logger
+    println!("Recv pong response");
     let response = from_main.recv().unwrap();
     assert_eq!(response, "response:pong received".to_string());
+    // FIXME: use a logger
+    println!("Test finished");
 }

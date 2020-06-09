@@ -21,8 +21,8 @@ use crate::ipc::multiplex::{MultiplexResult, Multiplexer};
 use crossbeam::channel::{Receiver, Sender};
 
 pub struct Port {
-    _multiplexer: Multiplexer,
-    _server: server::Server,
+    multiplexer: Option<Multiplexer>,
+    server: Option<server::Server>,
     client: client::Client,
 }
 
@@ -37,15 +37,23 @@ impl Port {
             response_recv,
         } = Multiplexer::multiplex(recv);
         let client = client::Client::new(send.clone(), response_recv);
-        let _server = server::Server::new(dispatcher, send, request_recv);
+        let server = server::Server::new(dispatcher, send, request_recv);
         Self {
             client,
-            _server,
-            _multiplexer: multiplexer,
+            server: Some(server),
+            multiplexer: Some(multiplexer),
         }
     }
 
     pub fn call(&self, message: String) -> String {
         self.client.call(message)
+    }
+}
+
+impl Drop for Port {
+    fn drop(&mut self) {
+        // Shutdown multiplexer before server
+        self.multiplexer.take().unwrap().shutdown();
+        self.server.take().unwrap().shutdown();
     }
 }
