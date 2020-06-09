@@ -79,7 +79,10 @@ impl Executor for PlainThread {
         let path = path.to_owned();
         let mut args: Vec<String> = args.iter().map(|&x| x.to_string()).collect();
         args.insert(0, "Thread".to_owned()); // corresponding to program path
-        let handle = std::thread::spawn(move || get_function_pool(&path)(args));
+        let handle = std::thread::Builder::new()
+            .name("Plain Thread Runner".to_string())
+            .spawn(move || get_function_pool(&path)(args))
+            .unwrap();
 
         PlainThread {
             handle: Some(handle),
@@ -112,7 +115,8 @@ pub struct Context<T: Ipc, E: Executor> {
 /// id must be unique for each instance.
 pub fn execute<T: Ipc + 'static, E: Executor>(path: &str) -> Result<Context<T, E>, String> {
     let (config_server, config_client) = T::arguments_for_both_ends();
-    let ipc = std::thread::spawn(move || T::new(config_server));
+    let ipc =
+        std::thread::Builder::new().name("Ipc connector".to_string()).spawn(move || T::new(config_server)).unwrap();
     let config_client = hex::encode(&config_client);
     let args: Vec<&str> = vec![&config_client];
     let child = ExecutorDropper {

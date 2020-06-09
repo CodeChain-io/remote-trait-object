@@ -74,13 +74,19 @@ impl Multiplexer {
             receiver_sends.push(send);
         }
 
-        let sender_thread = thread::spawn(move || {
-            sender(ipc_send, sender_recv);
-        });
+        let sender_thread = std::thread::Builder::new()
+            .name("Multiplexer Sender".to_string())
+            .spawn(move || {
+                sender(ipc_send, sender_recv);
+            })
+            .unwrap();
 
-        let receiver_thread = thread::spawn(move || {
-            receiver::<F, R>(ipc_recv, receiver_sends);
-        });
+        let receiver_thread = std::thread::Builder::new()
+            .name("Multiplexer Receiver".to_string())
+            .spawn(move || {
+                receiver::<F, R>(ipc_recv, receiver_sends);
+            })
+            .unwrap();
 
         (channel_ends, Multiplexer {
             sender_thread: Some(sender_thread),
