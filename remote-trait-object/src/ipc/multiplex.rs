@@ -41,8 +41,7 @@ impl Multiplexer {
                     recv(ipc_recv) -> msg => match msg {
                         Ok(msg) => msg,
                         Err(err) => {
-                            // FIXME: use a logger
-                            println!("ipc_recv is closed in multiplex {}", err);
+                            debug!("ipc_recv is closed in multiplex {}", err);
                             return;
                         }
                     },

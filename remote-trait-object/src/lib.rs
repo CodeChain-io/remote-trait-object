@@ -16,6 +16,8 @@
 
 #[macro_use]
 extern crate crossbeam;
+#[macro_use]
+extern crate log;
 
 mod ipc;
 mod port;
