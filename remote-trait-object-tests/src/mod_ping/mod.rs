@@ -16,12 +16,21 @@
 
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
-use remote_trait_object::Port;
+use remote_trait_object::{Port, ServiceForwarder, ServiceHandler};
 
 pub fn main_like<IPC>(_args: Vec<String>, with_main: ConnectionEnd<IPC>) -> PingModule
 where
     IPC: Ipc, {
-    let port_to_main = start_server(with_main);
+    let mut service_forwarder = ServiceForwarder::new();
+    service_forwarder.add_service("ping".to_string(), Box::new(PingService {}));
+
+    let ConnectionEnd {
+        receiver: from_main,
+        sender: to_main,
+    } = with_main;
+
+    let port_to_main = Port::new(to_main, from_main, service_forwarder);
+
     PingModule {
         _port_to_main: port_to_main,
     }
@@ -31,16 +40,14 @@ pub struct PingModule {
     _port_to_main: Port,
 }
 
-fn start_server<IPC: Ipc>(with_main: ConnectionEnd<IPC>) -> Port {
-    let ConnectionEnd {
-        receiver: from_main,
-        sender: to_main,
-    } = with_main;
-    Port::new(to_main, from_main, |msg| {
+struct PingService {}
+
+impl ServiceHandler for PingService {
+    fn call(&self, msg: String) -> String {
         if msg == "ping" {
             "pong".to_string()
         } else {
-            panic!("Unexpected message in ping from main {}", msg)
+            panic!("Unexpected message in ping {}", msg)
         }
-    })
+    }
 }

@@ -14,16 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate crossbeam;
-#[macro_use]
-extern crate log;
-
-mod forwarder;
-pub mod ipc;
-mod port;
-mod service;
-
-pub use forwarder::ServiceForwarder;
-pub use port::Port;
-pub use service::ServiceHandler;
+pub trait ServiceHandler: Send {
+    fn call(&self, input: String) -> String {
+        input
+    }
+}

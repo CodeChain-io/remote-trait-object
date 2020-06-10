@@ -31,6 +31,7 @@ impl Client {
 
     pub fn call(&self, msg: String) -> String {
         self.ipc_send.send(format!("request:{}", msg)).unwrap();
+        // Need call slots to find the exact response
         self.ipc_recv.recv().unwrap()
     }
 }

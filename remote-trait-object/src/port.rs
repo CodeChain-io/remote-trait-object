@@ -18,7 +18,7 @@ mod client;
 mod server;
 mod types;
 
-use self::types::Handler;
+pub use self::types::Handler;
 use crate::ipc::multiplex::{MultiplexResult, Multiplexer};
 use crate::ipc::{IpcRecv, IpcSend};
 

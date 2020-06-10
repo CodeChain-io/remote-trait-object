@@ -17,7 +17,7 @@
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use parking_lot::Mutex;
-use remote_trait_object::Port;
+use remote_trait_object::{Port, ServiceForwarder, ServiceHandler};
 use std::sync::Arc;
 
 pub fn main_like<IPC: Ipc>(
@@ -49,27 +49,45 @@ impl Context {
     }
 }
 
+struct StarterService {
+    ctx: Arc<Context>,
+}
+
+impl StarterService {
+    pub fn new(ctx: Arc<Context>) -> Self {
+        Self {
+            ctx,
+        }
+    }
+}
+
+impl ServiceHandler for StarterService {
+    fn call(&self, msg: String) -> String {
+        if msg == "start" {
+            let ping_port = self.ctx.ping_port.lock();
+            let pong = ping_port.as_ref().unwrap().call("ping:ping".to_string());
+            if pong == "pong" {
+                "pong received".to_string()
+            } else {
+                format!("unexpected {} received", pong)
+            }
+        } else {
+            panic!("unexpected msg in main module from cmd {}", msg)
+        }
+    }
+}
+
 fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd<IPC>) -> Arc<Context> {
     let ctx = Arc::new(Context::new());
     let cmd_port = {
+        let mut service_forwarder = ServiceForwarder::new();
+        service_forwarder.add_service("main".to_string(), Box::new(StarterService::new(Arc::clone(&ctx))));
+
         let ConnectionEnd {
             receiver: from_cmd,
             sender: to_cmd,
         } = with_cmd;
-        let cloned_ctx = Arc::clone(&ctx);
-        Port::new(to_cmd, from_cmd, move |msg| {
-            if msg == "start" {
-                let ping_port = cloned_ctx.ping_port.lock();
-                let pong = ping_port.as_ref().unwrap().call("ping".to_string());
-                if pong == "pong" {
-                    "pong received".to_string()
-                } else {
-                    format!("unexpected {} received", pong)
-                }
-            } else {
-                panic!("unexpected msg in main module from cmd {}", msg)
-            }
-        })
+        Port::new(to_cmd, from_cmd, service_forwarder)
     };
 
     let ping_port = {
