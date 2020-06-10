@@ -6,6 +6,8 @@ edition = "2018"
 
 [dependencies]
 crossbeam = "0.7.3"
+env_logger = "0.7.1"
+log = "0.4.8"
 remote-trait-object = {path = "../remote-trait-object"}
 parking_lot = "0.10.2"
 
