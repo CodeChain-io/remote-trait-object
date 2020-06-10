@@ -14,11 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod context;
+mod impls;
+mod traits;
+
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
-use parking_lot::Mutex;
+use context::Context;
+use impls::MainHandler;
 use remote_trait_object::{Port, ServiceForwarder, ServiceHandler};
 use std::sync::Arc;
+use traits::MainInterface;
 
 pub fn main_like<IPC: Ipc>(
     _args: Vec<String>,
@@ -35,28 +41,17 @@ pub struct MainModule {
     _context: Arc<Context>,
 }
 
-struct Context {
-    cmd_port: Mutex<Option<Port>>,
-    ping_port: Mutex<Option<Port>>,
-}
-
-impl Context {
-    fn new() -> Self {
-        Context {
-            cmd_port: Default::default(),
-            ping_port: Default::default(),
-        }
-    }
-}
-
 struct StarterService {
-    ctx: Arc<Context>,
+    _ctx: Arc<Context>,
+    handler: MainHandler,
 }
 
 impl StarterService {
     pub fn new(ctx: Arc<Context>) -> Self {
+        let handler = MainHandler::new(Arc::clone(&ctx));
         Self {
-            ctx,
+            _ctx: ctx,
+            handler,
         }
     }
 }
@@ -64,13 +59,7 @@ impl StarterService {
 impl ServiceHandler for StarterService {
     fn call(&self, msg: String) -> String {
         if msg == "start" {
-            let ping_port = self.ctx.ping_port.lock();
-            let pong = ping_port.as_ref().unwrap().call("ping:ping".to_string());
-            if pong == "pong" {
-                "pong received".to_string()
-            } else {
-                format!("unexpected {} received", pong)
-            }
+            self.handler.start()
         } else {
             panic!("unexpected msg in main module from cmd {}", msg)
         }

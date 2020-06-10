@@ -14,15 +14,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod impls;
+pub mod requester;
+mod traits;
+
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
+use impls::PingHandler;
 use remote_trait_object::{Port, ServiceForwarder, ServiceHandler};
+use traits::PingInterface;
 
 pub fn main_like<IPC>(_args: Vec<String>, with_main: ConnectionEnd<IPC>) -> PingModule
 where
     IPC: Ipc, {
     let mut service_forwarder = ServiceForwarder::new();
-    service_forwarder.add_service("ping".to_string(), Box::new(PingService {}));
+    service_forwarder.add_service("ping".to_string(), Box::new(PingService::new()));
 
     let ConnectionEnd {
         receiver: from_main,
@@ -40,12 +46,22 @@ pub struct PingModule {
     _port_to_main: Port,
 }
 
-struct PingService {}
+struct PingService {
+    ping_handler: PingHandler,
+}
+
+impl PingService {
+    pub fn new() -> Self {
+        Self {
+            ping_handler: PingHandler {},
+        }
+    }
+}
 
 impl ServiceHandler for PingService {
     fn call(&self, msg: String) -> String {
         if msg == "ping" {
-            "pong".to_string()
+            self.ping_handler.ping()
         } else {
             panic!("Unexpected message in ping {}", msg)
         }
