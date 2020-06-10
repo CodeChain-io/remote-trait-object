@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::types::Handler;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{self, Receiver, Sender};
 use std::thread;
@@ -25,9 +26,9 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new<F>(dispatcher: F, ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self
+    pub fn new<H>(dispatcher: H, ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self
     where
-        F: Fn(String) -> String + Send + 'static, {
+        H: Handler + Send + 'static, {
         let (joined_event_sender, joined_event_receiver) = channel::bounded(1);
         let receiver_thread = thread::Builder::new()
             .name("port server receiver".into())
@@ -64,9 +65,9 @@ impl Drop for Server {
     }
 }
 
-fn receiver<F>(dispatcher: F, ipc_send: Sender<String>, ipc_recv: Receiver<String>)
+fn receiver<H>(handler: H, ipc_send: Sender<String>, ipc_recv: Receiver<String>)
 where
-    F: Fn(String) -> String, {
+    H: Handler, {
     loop {
         let request = match ipc_recv.recv() {
             Ok(request) => request,
@@ -75,7 +76,7 @@ where
                 return
             }
         };
-        let response = dispatcher(request);
+        let response = handler.handle(request);
         ipc_send.send(format!("response:{}", response)).unwrap();
     }
 }

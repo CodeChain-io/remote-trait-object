@@ -16,7 +16,9 @@
 
 mod client;
 mod server;
+mod types;
 
+use self::types::Handler;
 use crate::ipc::multiplex::{MultiplexResult, Multiplexer};
 use crate::ipc::{IpcRecv, IpcSend};
 
@@ -27,9 +29,9 @@ pub struct Port {
 }
 
 impl Port {
-    pub fn new<F, IpcSender, IpcReceiver>(ipc_send: IpcSender, ipc_recv: IpcReceiver, dispatcher: F) -> Self
+    pub fn new<H, IpcSender, IpcReceiver>(ipc_send: IpcSender, ipc_recv: IpcReceiver, handler: H) -> Self
     where
-        F: Fn(String) -> String + Send + 'static,
+        H: Handler + Send + 'static,
         IpcSender: IpcSend + 'static,
         IpcReceiver: IpcRecv + 'static, {
         let MultiplexResult {
@@ -39,7 +41,7 @@ impl Port {
             multiplexed_send,
         } = Multiplexer::multiplex(ipc_send, ipc_recv);
         let client = client::Client::new(multiplexed_send.clone(), response_recv);
-        let server = server::Server::new(dispatcher, multiplexed_send, request_recv);
+        let server = server::Server::new(handler, multiplexed_send, request_recv);
         Self {
             client,
             server: Some(server),
