@@ -15,8 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod intra;
-pub mod multiplex;
-pub mod unix_socket;
 
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
@@ -39,17 +37,4 @@ pub trait Ipc: IpcSend + IpcRecv {
     /// When you design both halves, you might consider who's in charge of cleaning up things.
     /// Common implementation is making both to have Arc<SomethingDroppable>.
     fn split(self) -> (Self::SendHalf, Self::RecvHalf);
-}
-
-/// Most of IPC depends on a system-wide name, which looks quite vulnerable for
-/// possible attack. Rather, generating a random name would be more secure.
-pub fn generate_random_name() -> String {
-    static MONOTONIC: OnceCell<Mutex<u64>> = OnceCell::new();
-    let mut mono = MONOTONIC.get_or_init(|| Mutex::new(0)).lock();
-    *mono += 1;
-    let mono = *mono;
-    let pid = std::process::id();
-    let time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
-    let hash = ccrypto::blake256(format!("{:?}{}{}", time, pid, mono));
-    format!("{:?}", hash)[0..16].to_string()
 }
