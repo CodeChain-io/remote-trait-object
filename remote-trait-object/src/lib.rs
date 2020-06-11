@@ -19,7 +19,7 @@ extern crate crossbeam;
 #[macro_use]
 extern crate log;
 
-mod ipc;
+pub mod ipc;
 mod port;
 
 pub use port::Port;

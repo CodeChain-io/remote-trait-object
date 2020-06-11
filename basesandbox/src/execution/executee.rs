@@ -14,29 +14,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub mod multiplex;
+use crate::ipc::*;
 
-pub trait IpcSend: Send {
-    /// It might block until counterparty's recv(). Even if not, the order is still guaranteed.
-    fn send(&self, data: &[u8]);
+// Interface for the sandboxee written in Rust
+pub struct Context<T: Ipc> {
+    /// ipc will be given with Some, but module may take it
+    /// However, the ipc must be return back here before the module terminates
+    pub ipc: Option<T>,
 }
 
-#[derive(Debug, PartialEq)]
-pub enum RecvError {
-    TimeOut,
-    Termination,
+pub fn start<T: Ipc>(mut args: Vec<String>) -> Context<T> {
+    let ipc = T::new(hex::decode(args.remove(1)).unwrap());
+    ipc.send(b"#INIT\0");
+    Context {
+        ipc: Some(ipc),
+    }
 }
 
-pub trait Terminate: Send {
-    /// Wake up block on recv with a special flag
-    fn terminate(&self);
-}
-
-pub trait IpcRecv: Send {
-    type Terminator: Terminate;
-
-    /// Returns Err only for the timeout or termination wake-up(otherwise panic)
-    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError>;
-    /// Create a terminate switch that can be sent to another thread
-    fn create_terminator(&self) -> Self::Terminator;
+impl<T: Ipc> Context<T> {
+    /// Tell the executor that I will exit asap after this byebye handshake.
+    pub fn terminate(self) {
+        let ipc = self.ipc.unwrap();
+        assert_eq!(ipc.recv(Some(std::time::Duration::from_millis(500))).unwrap(), b"#TERMINATE\0");
+    }
 }
