@@ -14,29 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub mod multiplex;
+extern crate codechain_basesandbox as cbsb;
+use cbsb::execution::executee;
+use cbsb::ipc::{IpcRecv, IpcSend};
+use std::time::Duration;
 
-pub trait IpcSend: Send {
-    /// It might block until counterparty's recv(). Even if not, the order is still guaranteed.
-    fn send(&self, data: &[u8]);
-}
+type IpcScheme = cbsb::ipc::unix_socket::DomainSocket;
 
-#[derive(Debug, PartialEq)]
-pub enum RecvError {
-    TimeOut,
-    Termination,
-}
-
-pub trait Terminate: Send {
-    /// Wake up block on recv with a special flag
-    fn terminate(&self);
-}
-
-pub trait IpcRecv: Send {
-    type Terminator: Terminate;
-
-    /// Returns Err only for the timeout or termination wake-up(otherwise panic)
-    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError>;
-    /// Create a terminate switch that can be sent to another thread
-    fn create_terminator(&self) -> Self::Terminator;
+#[cfg(all(unix, target_arch = "x86_64"))]
+fn main() -> Result<(), String> {
+    let args = std::env::args().collect();
+    let ctx = executee::start::<IpcScheme>(args);
+    let r = ctx.ipc.as_ref().unwrap().recv(Some(Duration::from_millis(100))).unwrap();
+    assert_eq!(r, b"Hello?\0");
+    ctx.ipc.as_ref().unwrap().send(b"I'm here!\0");
+    ctx.terminate();
+    Ok(())
 }
