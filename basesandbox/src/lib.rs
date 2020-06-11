@@ -17,5 +17,4 @@
 #[macro_use]
 extern crate log;
 
-pub mod execution;
 pub mod ipc;
