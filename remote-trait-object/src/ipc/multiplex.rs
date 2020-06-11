@@ -99,13 +99,9 @@ fn parse(message: String) -> Option<ParseResult> {
     let request_prefix = "request:";
     let response_prefix = "response:";
     if message.starts_with(request_prefix) {
-        Some(ParseResult::Request(
-            message.trim_start_matches(request_prefix).to_string(),
-        ))
+        Some(ParseResult::Request(message.trim_start_matches(request_prefix).to_string()))
     } else if message.starts_with(response_prefix) {
-        Some(ParseResult::Response(
-            message.trim_start_matches(response_prefix).to_string(),
-        ))
+        Some(ParseResult::Response(message.trim_start_matches(response_prefix).to_string()))
     } else {
         None
     }
