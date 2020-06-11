@@ -22,9 +22,11 @@ extern crate log;
 mod context;
 mod forwarder;
 pub mod ipc;
+mod packet;
 mod port;
 mod service;
 
 pub use context::Context;
+pub use packet::{Packet, PacketView, SlotId};
 pub use port::Port;
 pub use service::{Dispatch, Service};
