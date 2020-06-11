@@ -17,20 +17,22 @@
 use crossbeam::channel::{Receiver, Sender};
 
 pub struct Client {
-    ipc_send: Sender<String>,
-    ipc_recv: Receiver<String>,
+    ipc_send: Sender<Vec<u8>>,
+    ipc_recv: Receiver<Vec<u8>>,
 }
 
 impl Client {
-    pub fn new(ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self {
+    pub fn new(ipc_send: Sender<Vec<u8>>, ipc_recv: Receiver<Vec<u8>>) -> Self {
         Client {
             ipc_send,
             ipc_recv,
         }
     }
 
-    pub fn call(&self, msg: String) -> String {
-        self.ipc_send.send(format!("request:{}", msg)).unwrap();
+    pub fn call(&self, msg: &[u8]) -> Vec<u8> {
+        // FIXME
+        let msg = String::from_utf8(msg.to_vec()).unwrap();
+        self.ipc_send.send(format!("request:{}", msg).as_bytes().to_vec()).unwrap();
         // Need call slots to find the exact response
         self.ipc_recv.recv().unwrap()
     }

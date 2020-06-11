@@ -20,9 +20,9 @@ use parking_lot::Mutex;
 use std::thread;
 
 pub struct MultiplexResult {
-    pub request_recv: Receiver<String>,
-    pub response_recv: Receiver<String>,
-    pub multiplexed_send: Sender<String>,
+    pub request_recv: Receiver<Vec<u8>>,
+    pub response_recv: Receiver<Vec<u8>>,
+    pub multiplexed_send: Sender<Vec<u8>>,
     pub multiplexer: Multiplexer,
 }
 
@@ -79,7 +79,7 @@ impl Multiplexer {
     }
 }
 
-fn receiver_loop(ipc_recv: impl IpcRecv, request_send: Sender<String>, response_send: Sender<String>) {
+fn receiver_loop(ipc_recv: impl IpcRecv, request_send: Sender<Vec<u8>>, response_send: Sender<Vec<u8>>) {
     loop {
         let original_message = match ipc_recv.recv(None) {
             Err(RecvError::TimeOut) => panic!(),
@@ -96,13 +96,13 @@ fn receiver_loop(ipc_recv: impl IpcRecv, request_send: Sender<String>, response_
             Some(ParseResult::Request(request)) => request_send.send(request).unwrap(),
             Some(ParseResult::Response(response)) => response_send.send(response).unwrap(),
             None => {
-                panic!("Receved invalid message {}", original_message);
+                panic!("Receved invalid message {:?}", original_message);
             }
         }
     }
 }
 
-fn sender_loop(ipc_sender: impl IpcSend, from_multiplexed_send: Receiver<String>, from_terminator: Receiver<()>) {
+fn sender_loop(ipc_sender: impl IpcSend, from_multiplexed_send: Receiver<Vec<u8>>, from_terminator: Receiver<()>) {
     loop {
         let data = select! {
             recv(from_multiplexed_send) -> msg => match msg {
@@ -122,7 +122,7 @@ fn sender_loop(ipc_sender: impl IpcSend, from_multiplexed_send: Receiver<String>
                 }
             },
         };
-        ipc_sender.send(data);
+        ipc_sender.send(&data);
     }
 }
 
@@ -133,17 +133,21 @@ impl Drop for Multiplexer {
 }
 
 enum ParseResult {
-    Request(String),
-    Response(String),
+    Request(Vec<u8>),
+    Response(Vec<u8>),
 }
 
-fn parse(message: String) -> Option<ParseResult> {
+fn parse(message: Vec<u8>) -> Option<ParseResult> {
+    // FIXME
+    let message = String::from_utf8(message).unwrap();
     let request_prefix = "request:";
     let response_prefix = "response:";
     if message.starts_with(request_prefix) {
-        Some(ParseResult::Request(message.trim_start_matches(request_prefix).to_string()))
+        // FIXME
+        Some(ParseResult::Request(message.trim_start_matches(request_prefix).as_bytes().to_vec()))
     } else if message.starts_with(response_prefix) {
-        Some(ParseResult::Response(message.trim_start_matches(response_prefix).to_string()))
+        // FIXME
+        Some(ParseResult::Response(message.trim_start_matches(response_prefix).as_bytes().to_vec()))
     } else {
         None
     }

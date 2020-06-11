@@ -33,6 +33,10 @@ impl<'a> PingInterface for PingRequester<'a> {
     fn ping(&self) -> String {
         let service_name = "Singleton";
         let method_name = "ping";
-        self.ping_rto.get_port().upgrade().unwrap().call(format!("{}:{}", service_name, method_name))
+        // FIXME
+        String::from_utf8(
+            self.ping_rto.get_port().upgrade().unwrap().call(format!("{}:{}", service_name, method_name).as_bytes()),
+        )
+        .unwrap()
     }
 }

@@ -15,14 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub trait Handler: Send + Sync {
-    fn handle(&self, input: String) -> String;
+    fn handle(&self, input: &[u8]) -> Vec<u8>;
 }
 
 impl<F> Handler for F
 where
-    F: Fn(String) -> String + Send + Sync,
+    F: Fn(&[u8]) -> Vec<u8> + Send + Sync,
 {
-    fn handle(&self, input: String) -> String {
+    fn handle(&self, input: &[u8]) -> Vec<u8> {
         self(input)
     }
 }

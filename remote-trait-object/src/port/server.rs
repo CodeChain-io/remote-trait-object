@@ -27,7 +27,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new<H>(handler: Arc<H>, ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self
+    pub fn new<H>(handler: Arc<H>, ipc_send: Sender<Vec<u8>>, ipc_recv: Receiver<Vec<u8>>) -> Self
     where
         H: Handler + Send + 'static, {
         let (joined_event_sender, joined_event_receiver) = channel::bounded(1);
@@ -66,7 +66,7 @@ impl Drop for Server {
     }
 }
 
-fn receiver<H>(handler: Arc<H>, ipc_send: Sender<String>, ipc_recv: Receiver<String>)
+fn receiver<H>(handler: Arc<H>, ipc_send: Sender<Vec<u8>>, ipc_recv: Receiver<Vec<u8>>)
 where
     H: Handler, {
     loop {
@@ -77,7 +77,8 @@ where
                 return
             }
         };
-        let response = handler.handle(request);
-        ipc_send.send(format!("response:{}", response)).unwrap();
+        let response = handler.handle(&request);
+        // FIXME
+        ipc_send.send(format!("response:{}", String::from_utf8(response).unwrap()).as_bytes().to_vec()).unwrap();
     }
 }

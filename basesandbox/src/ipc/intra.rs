@@ -17,16 +17,16 @@
 use super::{Ipc, IpcRecv, IpcSend, RecvError, Terminate};
 use crossbeam::channel::{bounded, Receiver, Select, SelectTimeoutError, Sender};
 
-pub struct IntraSend(Sender<String>);
+pub struct IntraSend(Sender<Vec<u8>>);
 
 impl IpcSend for IntraSend {
-    fn send(&self, data: String) {
-        self.0.send(data).unwrap()
+    fn send(&self, data: &[u8]) {
+        self.0.send(data.to_vec()).unwrap();
     }
 }
 
 pub struct IntraRecv {
-    data_receiver: Receiver<String>,
+    data_receiver: Receiver<Vec<u8>>,
     terminator_receiver: Receiver<()>,
     terminator: Sender<()>,
 }
@@ -44,7 +44,7 @@ impl Terminate for Terminator {
 impl IpcRecv for IntraRecv {
     type Terminator = Terminator;
 
-    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<String, RecvError> {
+    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError> {
         let mut selector = Select::new();
         let data_receiver_index = selector.recv(&self.data_receiver);
         let terminator_index = selector.recv(&self.terminator_receiver);

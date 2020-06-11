@@ -18,7 +18,7 @@ pub mod multiplex;
 
 pub trait IpcSend: Send {
     /// It might block until counterparty's recv(). Even if not, the order is still guaranteed.
-    fn send(&self, data: String);
+    fn send(&self, data: &[u8]);
 }
 
 #[derive(Debug, PartialEq)]
@@ -36,7 +36,7 @@ pub trait IpcRecv: Send {
     type Terminator: Terminate;
 
     /// Returns Err only for the timeout or termination wake-up(otherwise panic)
-    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<String, RecvError>;
+    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError>;
     /// Create a terminate switch that can be sent to another thread
     fn create_terminator(&self) -> Self::Terminator;
 }
