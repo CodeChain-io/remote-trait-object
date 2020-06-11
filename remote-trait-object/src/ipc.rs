@@ -28,7 +28,7 @@ pub enum RecvError {
 }
 
 pub trait Terminate: Send {
-    /// Wake up block on recv with a special flag
+    /// Wake up block on recv
     fn terminate(&self);
 }
 
