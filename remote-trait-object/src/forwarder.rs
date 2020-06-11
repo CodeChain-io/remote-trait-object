@@ -39,12 +39,12 @@ impl ServiceForwarder {
         }
     }
 
-    pub fn forward_and_call(&self, input: String) -> String {
+    pub fn forward_and_call(&self, input: &[u8]) -> Vec<u8> {
         let ParseResult {
             service_name,
             data,
         } = parse(input);
-        self.service_handlers.read()[&service_name].dispatch_and_call(data)
+        self.service_handlers.read()[&service_name].dispatch_and_call(&data)
     }
 }
 
@@ -55,17 +55,19 @@ impl Default for ServiceForwarder {
 }
 
 impl Handler for ServiceForwarder {
-    fn handle(&self, input: String) -> String {
+    fn handle(&self, input: &[u8]) -> Vec<u8> {
         self.forward_and_call(input)
     }
 }
 
 struct ParseResult {
     service_name: String,
-    data: String,
+    data: Vec<u8>,
 }
 
-fn parse(message: String) -> ParseResult {
+fn parse(message: &[u8]) -> ParseResult {
+    // FIXME
+    let message = String::from_utf8(message.to_vec()).unwrap();
     let separator = message
         .find(':')
         .unwrap_or_else(|| panic!("Can't find : to parse service name. Original message: {}", message));
@@ -74,6 +76,7 @@ fn parse(message: String) -> ParseResult {
     let data = message[separator + 1..].to_string();
     ParseResult {
         service_name,
-        data,
+        // FIXME
+        data: data.as_bytes().to_vec(),
     }
 }

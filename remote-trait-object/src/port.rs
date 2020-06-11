@@ -25,7 +25,7 @@ use client::Client;
 use std::sync::Arc;
 
 pub trait Port: Send + Sync + 'static {
-    fn call(&self, arg: String) -> String;
+    fn call(&self, arg: &[u8]) -> Vec<u8>;
     fn delete_request(&self, id: ServiceObjectId);
     /// TODO: Assign id automatically and return it.
     fn register(&self, id: String, handle_to_register: Box<dyn Service>);
@@ -37,7 +37,7 @@ pub struct BasicPort {
 }
 
 impl Port for BasicPort {
-    fn call(&self, arg: String) -> String {
+    fn call(&self, arg: &[u8]) -> Vec<u8> {
         self.client.call(arg)
     }
 

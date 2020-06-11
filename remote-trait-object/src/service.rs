@@ -25,8 +25,8 @@ pub struct ServiceObjectId {
 }
 
 pub trait Dispatch {
-    fn dispatch_and_call(&self, input: String) -> String {
-        input
+    fn dispatch_and_call(&self, input: &[u8]) -> Vec<u8> {
+        input.to_vec()
     }
 }
 
