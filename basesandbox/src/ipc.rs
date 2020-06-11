@@ -15,24 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod intra;
+pub use remote_trait_object::ipc::{IpcRecv, IpcSend, RecvError, Terminate};
 
-use once_cell::sync::OnceCell;
-use parking_lot::Mutex;
-pub use remote_trait_object::ipc::*;
-
-pub trait Ipc: IpcSend + IpcRecv {
-    /// Generate two configurations
-    /// which will be feeded to Ipc::new(),
-    /// for both two ends in two different processes, to initialize each IPC end.
-    /// Note that both sides' new() must be called concurrently; they will be completed only if
-    /// both run at the same time.
-    fn arguments_for_both_ends() -> (Vec<u8>, Vec<u8>);
+pub trait Ipc: Sized {
+    fn new_both_ends() -> (Self, Self);
 
     type SendHalf: IpcSend;
     type RecvHalf: IpcRecv;
 
-    /// Constructs itself with an opaque data that would have been transported by some IPC
-    fn new(data: Vec<u8>) -> Self;
     /// split itself into Send-only and Recv-only. This is helpful for a threading
     /// When you design both halves, you might consider who's in charge of cleaning up things.
     /// Common implementation is making both to have Arc<SomethingDroppable>.
