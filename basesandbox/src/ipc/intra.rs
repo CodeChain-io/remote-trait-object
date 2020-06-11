@@ -49,7 +49,10 @@ impl IpcSend for IntraSend {
     }
 }
 
-pub struct IntraRecv(Receiver<Vec<u8>>, Sender<Vec<u8>>);
+pub struct IntraRecv {
+    data_receiver: Receiver<Vec<u8>>,
+    terminator: Sender<Vec<u8>>,
+}
 
 pub struct Terminator(Sender<Vec<u8>>);
 
@@ -64,7 +67,7 @@ impl IpcRecv for IntraRecv {
 
     fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError> {
         let x = if let Some(t) = timeout {
-            self.0.recv_timeout(t).map_err(|e| {
+            self.data_receiver.recv_timeout(t).map_err(|e| {
                 if e == RecvTimeoutError::Timeout {
                     RecvError::TimeOut
                 } else {
@@ -72,7 +75,7 @@ impl IpcRecv for IntraRecv {
                 }
             })
         } else {
-            Ok(self.0.recv().unwrap())
+            Ok(self.data_receiver.recv().unwrap())
         }?;
 
         if x.is_empty() {
@@ -82,7 +85,7 @@ impl IpcRecv for IntraRecv {
     }
 
     fn create_terminator(&self) -> Self::Terminator {
-        Terminator(self.1.clone())
+        Terminator(self.terminator.clone())
     }
 }
 
@@ -165,7 +168,10 @@ impl Ipc for Intra {
 
         Intra {
             send: IntraSend(send),
-            recv: IntraRecv(recv, send_for_termination),
+            recv: IntraRecv {
+                data_receiver: recv,
+                terminator: send_for_termination,
+            },
         }
     }
 
