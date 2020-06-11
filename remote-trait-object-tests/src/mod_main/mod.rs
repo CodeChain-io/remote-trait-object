@@ -15,11 +15,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::connection::ConnectionEnd;
+use cbasesandbox::ipc::Ipc;
 use parking_lot::Mutex;
 use remote_trait_object::Port;
 use std::sync::Arc;
 
-pub fn main_like(_args: Vec<String>, with_cmd: ConnectionEnd, with_ping: ConnectionEnd) -> MainModule {
+pub fn main_like<IPC: Ipc>(
+    _args: Vec<String>,
+    with_cmd: ConnectionEnd<IPC>,
+    with_ping: ConnectionEnd<IPC>,
+) -> MainModule {
     let context = start_server(with_cmd, with_ping);
     MainModule {
         _context: context,
@@ -44,7 +49,7 @@ impl Context {
     }
 }
 
-fn start_server(with_cmd: ConnectionEnd, with_ping: ConnectionEnd) -> Arc<Context> {
+fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd<IPC>) -> Arc<Context> {
     let ctx = Arc::new(Context::new());
     let cmd_port = {
         let ConnectionEnd {

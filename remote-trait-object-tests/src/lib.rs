@@ -17,6 +17,7 @@
 #[cfg(test)]
 #[macro_use]
 extern crate log;
+extern crate codechain_basesandbox as cbasesandbox;
 
 mod connection;
 mod mod_main;

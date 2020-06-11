@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[cfg(test)]
-use crossbeam::channel;
-use crossbeam::channel::{Receiver, Sender};
+use cbasesandbox::ipc::Ipc;
 
 #[cfg(test)]
-pub fn create_connection() -> (ConnectionEnd, ConnectionEnd) {
-    let (send_to_a, recv_in_a) = channel::bounded(1);
-    let (send_to_b, recv_in_b) = channel::bounded(1);
+pub fn create_connection<IPC>() -> (ConnectionEnd<IPC>, ConnectionEnd<IPC>)
+where
+    IPC: Ipc, {
+    let (a_to_b, b_to_a) = IPC::new_both_ends();
+    let (send_to_b, recv_in_a) = a_to_b.split();
+    let (send_to_a, recv_in_b) = b_to_a.split();
 
     (
         ConnectionEnd {
@@ -35,7 +36,9 @@ pub fn create_connection() -> (ConnectionEnd, ConnectionEnd) {
     )
 }
 
-pub struct ConnectionEnd {
-    pub sender: Sender<String>,
-    pub receiver: Receiver<String>,
+pub struct ConnectionEnd<IPC>
+where
+    IPC: Ipc + 'static, {
+    pub sender: IPC::SendHalf,
+    pub receiver: IPC::RecvHalf,
 }

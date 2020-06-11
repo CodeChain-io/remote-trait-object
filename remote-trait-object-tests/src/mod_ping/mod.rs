@@ -15,9 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::connection::ConnectionEnd;
+use cbasesandbox::ipc::Ipc;
 use remote_trait_object::Port;
 
-pub fn main_like(_args: Vec<String>, with_main: ConnectionEnd) -> PingModule {
+pub fn main_like<IPC>(_args: Vec<String>, with_main: ConnectionEnd<IPC>) -> PingModule
+where
+    IPC: Ipc, {
     let port_to_main = start_server(with_main);
     PingModule {
         _port_to_main: port_to_main,
@@ -28,7 +31,7 @@ pub struct PingModule {
     _port_to_main: Port,
 }
 
-fn start_server(with_main: ConnectionEnd) -> Port {
+fn start_server<IPC: Ipc>(with_main: ConnectionEnd<IPC>) -> Port {
     let ConnectionEnd {
         receiver: from_main,
         sender: to_main,

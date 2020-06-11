@@ -17,6 +17,9 @@
 use super::mod_main::main_like as main_main;
 use super::mod_ping::main_like as ping_main;
 use crate::connection::{create_connection, ConnectionEnd};
+use cbasesandbox::ipc::intra::Intra;
+use cbasesandbox::ipc::{IpcRecv, IpcSend};
+use std::time::Duration;
 
 fn init_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -32,8 +35,8 @@ fn ping() {
     init_logger();
 
     debug!("ping test start");
-    let (main_to_cmd, cmd_to_main) = create_connection();
-    let (main_to_ping, ping_to_main) = create_connection();
+    let (main_to_cmd, cmd_to_main) = create_connection::<Intra>();
+    let (main_to_ping, ping_to_main) = create_connection::<Intra>();
 
     debug!("Call main_main");
     let _main_module = main_main(Vec::new(), main_to_cmd, main_to_ping);
@@ -46,9 +49,9 @@ fn ping() {
     } = cmd_to_main;
 
     debug!("Send start cmd");
-    to_main.send("request:start".to_string()).unwrap();
+    to_main.send("request:start".to_string());
     debug!("Recv pong response");
-    let response = from_main.recv().unwrap();
+    let response = from_main.recv(Some(Duration::from_secs(1))).unwrap();
     assert_eq!(response, "response:pong received".to_string());
     debug!("Test finished");
 }
