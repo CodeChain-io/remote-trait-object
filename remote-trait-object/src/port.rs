@@ -29,8 +29,7 @@ pub struct Port {
 impl Port {
     pub fn new<F>(send: Sender<String>, recv: Receiver<String>, dispatcher: F) -> Self
     where
-        F: Fn(String) -> String + Send + 'static,
-    {
+        F: Fn(String) -> String + Send + 'static, {
         let MultiplexResult {
             multiplexer,
             request_recv,

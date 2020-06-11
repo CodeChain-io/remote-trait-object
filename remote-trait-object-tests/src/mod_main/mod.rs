@@ -19,13 +19,11 @@ use parking_lot::Mutex;
 use remote_trait_object::Port;
 use std::sync::Arc;
 
-pub fn main_like(
-    _args: Vec<String>,
-    with_cmd: ConnectionEnd,
-    with_ping: ConnectionEnd,
-) -> MainModule {
+pub fn main_like(_args: Vec<String>, with_cmd: ConnectionEnd, with_ping: ConnectionEnd) -> MainModule {
     let context = start_server(with_cmd, with_ping);
-    MainModule { _context: context }
+    MainModule {
+        _context: context,
+    }
 }
 
 pub struct MainModule {
@@ -75,10 +73,7 @@ fn start_server(with_cmd: ConnectionEnd, with_ping: ConnectionEnd) -> Arc<Contex
             sender: to_ping,
         } = with_ping;
         Port::new(to_ping, from_ping, |msg| {
-            panic!(
-                "main do not expect receiving packet from ping. msg: {}",
-                msg
-            );
+            panic!("main do not expect receiving packet from ping. msg: {}", msg);
         })
     };
 

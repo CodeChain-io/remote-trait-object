@@ -23,7 +23,10 @@ pub struct Client {
 
 impl Client {
     pub fn new(ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self {
-        Client { ipc_send, ipc_recv }
+        Client {
+            ipc_send,
+            ipc_recv,
+        }
     }
 
     pub fn call(&self, msg: String) -> String {

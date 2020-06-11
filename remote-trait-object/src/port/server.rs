@@ -27,16 +27,13 @@ pub struct Server {
 impl Server {
     pub fn new<F>(dispatcher: F, ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self
     where
-        F: Fn(String) -> String + Send + 'static,
-    {
+        F: Fn(String) -> String + Send + 'static, {
         let (joined_event_sender, joined_event_receiver) = channel::bounded(1);
         let receiver_thread = thread::Builder::new()
             .name("port server receiver".into())
             .spawn(move || {
                 receiver(dispatcher, ipc_send, ipc_recv);
-                joined_event_sender
-                    .send(())
-                    .expect("Server will be dropped after thread is joined");
+                joined_event_sender.send(()).expect("Server will be dropped after thread is joined");
             })
             .unwrap();
 
@@ -47,10 +44,7 @@ impl Server {
     }
 
     pub fn shutdown(mut self) {
-        match self
-            .joined_event_receiver
-            .recv_timeout(time::Duration::from_millis(100))
-        {
+        match self.joined_event_receiver.recv_timeout(time::Duration::from_millis(100)) {
             Err(Timeout) => {
                 panic!("There may be a deadlock or misuse of Server. Call Server::shutdown when ipc_recv is closed");
             }
@@ -72,14 +66,13 @@ impl Drop for Server {
 
 fn receiver<F>(dispatcher: F, ipc_send: Sender<String>, ipc_recv: Receiver<String>)
 where
-    F: Fn(String) -> String,
-{
+    F: Fn(String) -> String, {
     loop {
         let request = match ipc_recv.recv() {
             Ok(request) => request,
             Err(_err) => {
                 // ipc_recv is closed.
-                return;
+                return
             }
         };
         let response = dispatcher(request);
