@@ -5,6 +5,7 @@ authors = ["CodeChain Team <hi@codechain.io>"]
 edition = "2018"
 
 [dependencies]
+codechain-basesandbox = { path = "../basesandbox" }
 crossbeam = "0.7.3"
 env_logger = "0.7.1"
 log = "0.4.8"

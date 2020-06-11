@@ -18,7 +18,7 @@ mod client;
 mod server;
 
 use crate::ipc::multiplex::{MultiplexResult, Multiplexer};
-use crossbeam::channel::{Receiver, Sender};
+use crate::ipc::{IpcRecv, IpcSend};
 
 pub struct Port {
     multiplexer: Option<Multiplexer>,
@@ -27,16 +27,19 @@ pub struct Port {
 }
 
 impl Port {
-    pub fn new<F>(send: Sender<String>, recv: Receiver<String>, dispatcher: F) -> Self
+    pub fn new<F, IpcSender, IpcReceiver>(ipc_send: IpcSender, ipc_recv: IpcReceiver, dispatcher: F) -> Self
     where
-        F: Fn(String) -> String + Send + 'static, {
+        F: Fn(String) -> String + Send + 'static,
+        IpcSender: IpcSend + 'static,
+        IpcReceiver: IpcRecv + 'static, {
         let MultiplexResult {
             multiplexer,
             request_recv,
             response_recv,
-        } = Multiplexer::multiplex(recv);
-        let client = client::Client::new(send.clone(), response_recv);
-        let server = server::Server::new(dispatcher, send, request_recv);
+            multiplexed_send,
+        } = Multiplexer::multiplex(ipc_send, ipc_recv);
+        let client = client::Client::new(multiplexed_send.clone(), response_recv);
+        let server = server::Server::new(dispatcher, multiplexed_send, request_recv);
         Self {
             client,
             server: Some(server),

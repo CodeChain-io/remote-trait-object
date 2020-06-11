@@ -14,73 +14,112 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::ipc::{IpcRecv, IpcSend, RecvError, Terminate};
 use crossbeam::channel::{self, Receiver, Sender};
 use std::thread;
 
 pub struct MultiplexResult {
     pub request_recv: Receiver<String>,
     pub response_recv: Receiver<String>,
+    pub multiplexed_send: Sender<String>,
     pub multiplexer: Multiplexer,
 }
 
 pub struct Multiplexer {
     receiver_thread: Option<thread::JoinHandle<()>>,
-    termination_send: Sender<()>,
+    receiver_terminator: Option<Box<dyn Terminate>>,
+    sender_thread: Option<thread::JoinHandle<()>>,
+    sender_terminator: Sender<()>,
 }
 
 impl Multiplexer {
-    pub fn multiplex(ipc_recv: Receiver<String>) -> MultiplexResult {
+    pub fn multiplex<IpcReceiver, IpcSender>(ipc_send: IpcSender, ipc_recv: IpcReceiver) -> MultiplexResult
+    where
+        IpcReceiver: IpcRecv + 'static,
+        IpcSender: IpcSend + 'static, {
         let (request_send, request_recv) = channel::bounded(1);
         let (response_send, response_recv) = channel::bounded(1);
-        let (termination_send, termination_recv) = channel::bounded(0);
+        let receiver_terminator: Option<Box<dyn Terminate>> = Some(Box::new(ipc_recv.create_terminator()));
 
         let receiver_thread = thread::Builder::new()
-            .name("multiplexer".into())
-            .spawn(move || loop {
-                let original_message = select! {
-                    recv(ipc_recv) -> msg => match msg {
-                        Ok(msg) => msg,
-                        Err(err) => {
-                            debug!("ipc_recv is closed in multiplex {}", err);
-                            return;
-                        }
-                    },
-                    recv(termination_recv) -> msg => match msg {
-                        Ok(_) => {
-                            return;
-                        },
-                        Err(err) => {
-                            panic!("Multiplexer is dropped before receiver_thread {}", err);
-                        }
-                    }
-                };
-                // FIXME: parsing is not the role of the Multiplexer.
-                let message = parse(original_message.clone());
-                match message {
-                    Some(ParseResult::Request(request)) => request_send.send(request).unwrap(),
-                    Some(ParseResult::Response(response)) => response_send.send(response).unwrap(),
-                    None => {
-                        panic!("Receved invalid message {}", original_message);
-                    }
-                }
-            })
+            .name("receiver multiplexer".into())
+            .spawn(move || receiver_loop(ipc_recv, request_send, response_send))
+            .unwrap();
+
+        let (multiplexed_send, from_multiplexed_send) = channel::bounded(1);
+        let (sender_terminator, recv_sender_terminate) = channel::bounded(1);
+        let sender_thread = thread::Builder::new()
+            .name("sender multiplexer".into())
+            .spawn(move || sender_loop(ipc_send, from_multiplexed_send, recv_sender_terminate))
             .unwrap();
 
         MultiplexResult {
             request_recv,
             response_recv,
+            multiplexed_send,
             multiplexer: Multiplexer {
-                termination_send,
                 receiver_thread: Some(receiver_thread),
+                sender_thread: Some(sender_thread),
+                receiver_terminator,
+                sender_terminator,
             },
         }
     }
 
     pub fn shutdown(mut self) {
-        if let Err(_err) = self.termination_send.send(()) {
-            // thread is already cleared;
-        }
+        self.receiver_terminator.take().unwrap().terminate();
         self.receiver_thread.take().unwrap().join().unwrap();
+        if let Err(_err) = self.sender_terminator.send(()) {
+            debug!("Sender thread is dropped before shutdown multiplexer");
+        }
+        self.sender_thread.take().unwrap().join().unwrap();
+    }
+}
+
+fn receiver_loop(ipc_recv: impl IpcRecv, request_send: Sender<String>, response_send: Sender<String>) {
+    loop {
+        let original_message = match ipc_recv.recv(None) {
+            Err(RecvError::TimeOut) => panic!(),
+            Err(RecvError::Termination) => {
+                debug!("ipc_recv is closed in multiplex");
+                return
+            }
+            Ok(data) => data,
+        };
+
+        // FIXME: parsing is not the role of the Multiplexer.
+        let message = parse(original_message.clone());
+        match message {
+            Some(ParseResult::Request(request)) => request_send.send(request).unwrap(),
+            Some(ParseResult::Response(response)) => response_send.send(response).unwrap(),
+            None => {
+                panic!("Receved invalid message {}", original_message);
+            }
+        }
+    }
+}
+
+fn sender_loop(ipc_sender: impl IpcSend, from_multiplexed_send: Receiver<String>, from_terminator: Receiver<()>) {
+    loop {
+        let data = select! {
+            recv(from_multiplexed_send) -> msg => match msg {
+                Ok(data) => data,
+                Err(_) => {
+                    debug!("All multiplexed send is closed");
+                    return;
+                }
+            },
+            recv(from_terminator) -> msg => match msg {
+                Ok(()) => {
+                    // Received termination flag
+                    return;
+                }
+                Err(err) => {
+                    panic!("Multiplexer is dropped before sender thread {}", err);
+                }
+            },
+        };
+        ipc_sender.send(data);
     }
 }
 
