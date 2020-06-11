@@ -16,6 +16,7 @@
 
 use crate::ipc::{IpcRecv, IpcSend, RecvError, Terminate};
 use crossbeam::channel::{self, Receiver, Sender};
+use parking_lot::Mutex;
 use std::thread;
 
 pub struct MultiplexResult {
@@ -27,7 +28,8 @@ pub struct MultiplexResult {
 
 pub struct Multiplexer {
     receiver_thread: Option<thread::JoinHandle<()>>,
-    receiver_terminator: Option<Box<dyn Terminate>>,
+    /// Here Mutex is used to make the Multiplxer Sync, while dyn Terminate isn't.
+    receiver_terminator: Option<Mutex<Box<dyn Terminate>>>,
     sender_thread: Option<thread::JoinHandle<()>>,
     sender_terminator: Sender<()>,
 }
@@ -39,7 +41,8 @@ impl Multiplexer {
         IpcSender: IpcSend + 'static, {
         let (request_send, request_recv) = channel::bounded(1);
         let (response_send, response_recv) = channel::bounded(1);
-        let receiver_terminator: Option<Box<dyn Terminate>> = Some(Box::new(ipc_recv.create_terminator()));
+        let receiver_terminator: Option<Mutex<Box<dyn Terminate>>> =
+            Some(Mutex::new(Box::new(ipc_recv.create_terminator())));
 
         let receiver_thread = thread::Builder::new()
             .name("receiver multiplexer".into())
@@ -67,7 +70,7 @@ impl Multiplexer {
     }
 
     pub fn shutdown(mut self) {
-        self.receiver_terminator.take().unwrap().terminate();
+        self.receiver_terminator.take().unwrap().into_inner().terminate();
         self.receiver_thread.take().unwrap().join().unwrap();
         if let Err(_err) = self.sender_terminator.send(()) {
             debug!("Sender thread is dropped before shutdown multiplexer");

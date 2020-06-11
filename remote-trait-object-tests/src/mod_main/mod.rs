@@ -89,7 +89,6 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
         })
     };
 
-    *ctx.cmd_port.lock() = Some(cmd_port);
-    *ctx.ping_port.lock() = Some(ping_port);
+    ctx.initialize_ports(cmd_port, ping_port);
     ctx
 }

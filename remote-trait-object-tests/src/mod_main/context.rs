@@ -14,19 +14,43 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use parking_lot::Mutex;
+use once_cell::sync::OnceCell;
 use remote_trait_object::Port;
+use std::fmt;
+use std::fmt::Debug;
 
 pub struct Context {
-    pub cmd_port: Mutex<Option<Port>>,
-    pub ping_port: Mutex<Option<Port>>,
+    inner: OnceCell<ContextInner>,
+}
+
+struct ContextInner {
+    pub cmd_port: Port,
+    pub ping_port: Port,
+}
+
+impl Debug for ContextInner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Context")
+    }
 }
 
 impl Context {
     pub fn new() -> Self {
         Context {
-            cmd_port: Default::default(),
-            ping_port: Default::default(),
+            inner: Default::default(),
         }
+    }
+
+    pub fn initialize_ports(&self, cmd_port: Port, ping_port: Port) {
+        self.inner
+            .set(ContextInner {
+                cmd_port,
+                ping_port,
+            })
+            .expect("initialize_portrs should be called only once");
+    }
+
+    pub fn ping_port(&self) -> &Port {
+        &self.inner.get().expect("Context is initalized").ping_port
     }
 }
