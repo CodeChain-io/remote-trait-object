@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 crossbeam = "0.7.3"
 log = "0.4.8"
+parking_lot = "0.10.2"

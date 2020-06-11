@@ -33,8 +33,7 @@ impl MainHandler {
 
 impl MainInterface for MainHandler {
     fn start(&self) -> String {
-        let ping_port = self.ctx.ping_port.lock();
-        let ping_requester = PingRequester::new(&ping_port.as_ref().unwrap());
+        let ping_requester = PingRequester::new(self.ctx.ping_port());
         let pong = ping_requester.ping();
         if pong == "pong" {
             "pong received".to_string()
