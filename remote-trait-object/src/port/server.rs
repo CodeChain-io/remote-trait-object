@@ -26,14 +26,14 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new<H>(dispatcher: H, ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self
+    pub fn new<H>(handler: H, ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self
     where
         H: Handler + Send + 'static, {
         let (joined_event_sender, joined_event_receiver) = channel::bounded(1);
         let receiver_thread = thread::Builder::new()
             .name("port server receiver".into())
             .spawn(move || {
-                receiver(dispatcher, ipc_send, ipc_recv);
+                receiver(handler, ipc_send, ipc_recv);
                 joined_event_sender.send(()).expect("Server will be dropped after thread is joined");
             })
             .unwrap();
