@@ -22,7 +22,7 @@ use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use context::Context;
 use impls::MainHandler;
-use remote_trait_object::{Port, ServiceForwarder, ServiceHandler};
+use remote_trait_object::{Dispatch, Port, ServiceForwarder};
 use std::sync::Arc;
 use traits::MainInterface;
 
@@ -56,8 +56,8 @@ impl StarterService {
     }
 }
 
-impl ServiceHandler for StarterService {
-    fn call(&self, msg: String) -> String {
+impl Dispatch for StarterService {
+    fn dispatch_and_call(&self, msg: String) -> String {
         if msg == "start" {
             self.handler.start()
         } else {

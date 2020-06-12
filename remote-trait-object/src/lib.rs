@@ -26,4 +26,4 @@ mod service;
 
 pub use forwarder::ServiceForwarder;
 pub use port::Port;
-pub use service::ServiceHandler;
+pub use service::Dispatch;
