@@ -49,7 +49,7 @@ fn ping() {
     } = cmd_to_main;
 
     debug!("Send start cmd");
-    to_main.send("request:main:start".to_string());
+    to_main.send("request:Singleton:start".to_string());
     debug!("Recv pong response");
     let response = from_main.recv(Some(Duration::from_secs(1))).unwrap();
     assert_eq!(response, "response:pong received".to_string());

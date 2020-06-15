@@ -22,7 +22,7 @@ use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use context::Context;
 use impls::MainHandler;
-use remote_trait_object::{BasicPort, ServiceForwarder, Dispatch};
+use remote_trait_object::{Context as RtoContext, Dispatch, Service};
 use std::sync::Arc;
 use traits::MainInterface;
 
@@ -56,6 +56,8 @@ impl StarterService {
     }
 }
 
+impl Service for StarterService {}
+
 impl Dispatch for StarterService {
     fn dispatch_and_call(&self, msg: String) -> String {
         if msg == "start" {
@@ -69,14 +71,16 @@ impl Dispatch for StarterService {
 fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd<IPC>) -> Arc<Context> {
     let ctx = Arc::new(Context::new());
     let cmd_port = {
-        let mut service_forwarder = ServiceForwarder::new();
-        service_forwarder.add_service("main".to_string(), Box::new(StarterService::new(Arc::clone(&ctx))));
-
         let ConnectionEnd {
             receiver: from_cmd,
             sender: to_cmd,
         } = with_cmd;
-        BasicPort::new(to_cmd, from_cmd, service_forwarder)
+        let port = RtoContext::new(to_cmd, from_cmd);
+        port.get_port()
+            .upgrade()
+            .unwrap()
+            .register("Singleton".to_owned(), Box::new(StarterService::new(Arc::clone(&ctx))));
+        port
     };
 
     let ping_port = {
@@ -84,9 +88,7 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
             receiver: from_ping,
             sender: to_ping,
         } = with_ping;
-        BasicPort::new(to_ping, from_ping, |msg| {
-            panic!("main do not expect receiving packet from ping. msg: {}", msg);
-        })
+        RtoContext::new(to_ping, from_ping)
     };
 
     ctx.initialize_ports(cmd_port, ping_port);

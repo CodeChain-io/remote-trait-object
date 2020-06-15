@@ -15,14 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub use super::traits::PingInterface;
-use remote_trait_object::BasicPort;
+use remote_trait_object::Context;
 
 pub struct PingRequester<'a> {
-    port: &'a BasicPort,
+    port: &'a Context,
 }
 
 impl<'a> PingRequester<'a> {
-    pub fn new(port: &'a BasicPort) -> Self {
+    pub fn new(port: &'a Context) -> Self {
         Self {
             port,
         }
@@ -31,8 +31,8 @@ impl<'a> PingRequester<'a> {
 
 impl<'a> PingInterface for PingRequester<'a> {
     fn ping(&self) -> String {
-        let service_name = "ping";
+        let service_name = "Singleton";
         let method_name = "ping";
-        self.port.call(format!("{}:{}", service_name, method_name))
+        self.port.get_port().upgrade().unwrap().call(format!("{}:{}", service_name, method_name))
     }
 }

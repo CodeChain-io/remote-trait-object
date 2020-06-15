@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use once_cell::sync::OnceCell;
-use remote_trait_object::BasicPort;
+use remote_trait_object::Context as RtoContext;
 use std::fmt;
 use std::fmt::Debug;
 
@@ -24,8 +24,8 @@ pub struct Context {
 }
 
 struct ContextInner {
-    pub cmd_port: BasicPort,
-    pub ping_port: BasicPort,
+    pub cmd_port: RtoContext,
+    pub ping_port: RtoContext,
 }
 
 impl Debug for ContextInner {
@@ -41,7 +41,7 @@ impl Context {
         }
     }
 
-    pub fn initialize_ports(&self, cmd_port: BasicPort, ping_port: BasicPort) {
+    pub fn initialize_ports(&self, cmd_port: RtoContext, ping_port: RtoContext) {
         self.inner
             .set(ContextInner {
                 cmd_port,
@@ -50,7 +50,7 @@ impl Context {
             .expect("initialize_portrs should be called only once");
     }
 
-    pub fn ping_port(&self) -> &BasicPort {
+    pub fn ping_port(&self) -> &RtoContext {
         &self.inner.get().expect("Context is initalized").ping_port
     }
 }

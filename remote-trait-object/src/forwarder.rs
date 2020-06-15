@@ -15,13 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::port::Handler;
-use crate::service::Dispatch;
+use crate::service::Service;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 
 type ServiceId = String;
 
 pub struct ServiceForwarder {
-    service_handlers: HashMap<ServiceId, Box<dyn Dispatch>>,
+    service_handlers: RwLock<HashMap<ServiceId, Box<dyn Service>>>,
 }
 
 impl ServiceForwarder {
@@ -31,8 +32,8 @@ impl ServiceForwarder {
         }
     }
 
-    pub fn add_service(&mut self, name: ServiceId, service: Box<dyn Dispatch>) {
-        let insert_result = self.service_handlers.insert(name.clone(), service);
+    pub fn add_service(&self, name: ServiceId, service: Box<dyn Service>) {
+        let insert_result = self.service_handlers.write().insert(name.clone(), service);
         if insert_result.is_some() {
             panic!("Duplicated service id {}", name);
         }
@@ -43,7 +44,7 @@ impl ServiceForwarder {
             service_name,
             data,
         } = parse(input);
-        self.service_handlers[&service_name].dispatch_and_call(data)
+        self.service_handlers.read()[&service_name].dispatch_and_call(data)
     }
 }
 
