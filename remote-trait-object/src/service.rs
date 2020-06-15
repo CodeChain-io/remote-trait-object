@@ -14,8 +14,22 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use serde::{Deserialize, Serialize};
+
+pub type InstanceId = u32;
+
+/// This struct represents an index to a service object in port server's registry
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
+pub struct ServiceObjectId {
+    pub(crate) index: InstanceId,
+}
+
 pub trait Dispatch: Send {
     fn dispatch_and_call(&self, input: String) -> String {
         input
     }
+}
+
+pub trait Service: Dispatch {
+    
 }
