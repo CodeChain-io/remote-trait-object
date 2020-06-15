@@ -21,21 +21,19 @@ mod traits;
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use impls::PingHandler;
-use remote_trait_object::{BasicPort, ServiceForwarder, Dispatch};
+use remote_trait_object::{Context, Dispatch, Service};
 use traits::PingInterface;
 
 pub fn main_like<IPC>(_args: Vec<String>, with_main: ConnectionEnd<IPC>) -> PingModule
 where
     IPC: Ipc, {
-    let mut service_forwarder = ServiceForwarder::new();
-    service_forwarder.add_service("ping".to_string(), Box::new(PingService::new()));
-
     let ConnectionEnd {
         receiver: from_main,
         sender: to_main,
     } = with_main;
 
-    let port_to_main = BasicPort::new(to_main, from_main, service_forwarder);
+    let port_to_main = Context::new(to_main, from_main);
+    port_to_main.get_port().upgrade().unwrap().register("Singleton".to_owned(), Box::new(PingService::new()));
 
     PingModule {
         _port_to_main: port_to_main,
@@ -43,7 +41,7 @@ where
 }
 
 pub struct PingModule {
-    _port_to_main: BasicPort,
+    _port_to_main: Context,
 }
 
 struct PingService {
@@ -67,3 +65,5 @@ impl Dispatch for PingService {
         }
     }
 }
+
+impl Service for PingService {}

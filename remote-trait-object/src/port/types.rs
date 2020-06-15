@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub trait Handler {
+pub trait Handler: Send + Sync {
     fn handle(&self, input: String) -> String;
 }
 
 impl<F> Handler for F
 where
-    F: Fn(String) -> String,
+    F: Fn(String) -> String + Send + Sync,
 {
     fn handle(&self, input: String) -> String {
         self(input)

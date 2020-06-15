@@ -17,6 +17,7 @@
 use super::types::Handler;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{self, Receiver, Sender};
+use std::sync::Arc;
 use std::thread;
 use std::time;
 
@@ -26,7 +27,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new<H>(handler: H, ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self
+    pub fn new<H>(handler: Arc<H>, ipc_send: Sender<String>, ipc_recv: Receiver<String>) -> Self
     where
         H: Handler + Send + 'static, {
         let (joined_event_sender, joined_event_receiver) = channel::bounded(1);
@@ -65,7 +66,7 @@ impl Drop for Server {
     }
 }
 
-fn receiver<H>(handler: H, ipc_send: Sender<String>, ipc_recv: Receiver<String>)
+fn receiver<H>(handler: Arc<H>, ipc_send: Sender<String>, ipc_recv: Receiver<String>)
 where
     H: Handler, {
     loop {

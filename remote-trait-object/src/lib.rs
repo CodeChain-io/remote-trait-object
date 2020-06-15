@@ -24,6 +24,5 @@ pub mod ipc;
 mod port;
 mod service;
 
-pub use forwarder::ServiceForwarder;
-pub use port::BasicPort;
-pub use service::Dispatch;
+pub use port::{Context, Port};
+pub use service::{Dispatch, Service};

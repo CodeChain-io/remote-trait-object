@@ -24,12 +24,10 @@ pub struct ServiceObjectId {
     pub(crate) index: InstanceId,
 }
 
-pub trait Dispatch: Send {
+pub trait Dispatch {
     fn dispatch_and_call(&self, input: String) -> String {
         input
     }
 }
 
-pub trait Service: Dispatch {
-    
-}
+pub trait Service: Dispatch + Send + Sync {}
