@@ -22,13 +22,13 @@ pub use self::types::Handler;
 use crate::ipc::multiplex::{MultiplexResult, Multiplexer};
 use crate::ipc::{IpcRecv, IpcSend};
 
-pub struct Port {
+pub struct BasicPort {
     multiplexer: Option<Multiplexer>,
     server: Option<server::Server>,
     client: client::Client,
 }
 
-impl Port {
+impl BasicPort {
     pub fn new<H, IpcSender, IpcReceiver>(ipc_send: IpcSender, ipc_recv: IpcReceiver, handler: H) -> Self
     where
         H: Handler + Send + 'static,
@@ -54,7 +54,7 @@ impl Port {
     }
 }
 
-impl Drop for Port {
+impl Drop for BasicPort {
     fn drop(&mut self) {
         // Shutdown multiplexer before server
         self.multiplexer.take().unwrap().shutdown();
