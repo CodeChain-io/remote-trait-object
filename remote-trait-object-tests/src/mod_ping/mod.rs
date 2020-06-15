@@ -21,7 +21,7 @@ mod traits;
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use impls::PingHandler;
-use remote_trait_object::{Dispatch, Port, ServiceForwarder};
+use remote_trait_object::{BasicPort, ServiceForwarder, Dispatch};
 use traits::PingInterface;
 
 pub fn main_like<IPC>(_args: Vec<String>, with_main: ConnectionEnd<IPC>) -> PingModule
@@ -35,7 +35,7 @@ where
         sender: to_main,
     } = with_main;
 
-    let port_to_main = Port::new(to_main, from_main, service_forwarder);
+    let port_to_main = BasicPort::new(to_main, from_main, service_forwarder);
 
     PingModule {
         _port_to_main: port_to_main,
@@ -43,7 +43,7 @@ where
 }
 
 pub struct PingModule {
-    _port_to_main: Port,
+    _port_to_main: BasicPort,
 }
 
 struct PingService {

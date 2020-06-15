@@ -15,14 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub use super::traits::PingInterface;
-use remote_trait_object::Port;
+use remote_trait_object::BasicPort;
 
 pub struct PingRequester<'a> {
-    port: &'a Port,
+    port: &'a BasicPort,
 }
 
 impl<'a> PingRequester<'a> {
-    pub fn new(port: &'a Port) -> Self {
+    pub fn new(port: &'a BasicPort) -> Self {
         Self {
             port,
         }

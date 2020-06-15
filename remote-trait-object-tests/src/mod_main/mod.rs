@@ -22,7 +22,7 @@ use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use context::Context;
 use impls::MainHandler;
-use remote_trait_object::{Dispatch, Port, ServiceForwarder};
+use remote_trait_object::{BasicPort, ServiceForwarder, Dispatch};
 use std::sync::Arc;
 use traits::MainInterface;
 
@@ -76,7 +76,7 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
             receiver: from_cmd,
             sender: to_cmd,
         } = with_cmd;
-        Port::new(to_cmd, from_cmd, service_forwarder)
+        BasicPort::new(to_cmd, from_cmd, service_forwarder)
     };
 
     let ping_port = {
@@ -84,7 +84,7 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
             receiver: from_ping,
             sender: to_ping,
         } = with_ping;
-        Port::new(to_ping, from_ping, |msg| {
+        BasicPort::new(to_ping, from_ping, |msg| {
             panic!("main do not expect receiving packet from ping. msg: {}", msg);
         })
     };
