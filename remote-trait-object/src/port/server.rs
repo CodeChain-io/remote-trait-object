@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::types::Handler;
+use crate::packet::Packet;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{self, Receiver, Sender};
 use std::sync::Arc;
@@ -27,7 +28,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new<H>(handler: Arc<H>, ipc_send: Sender<Vec<u8>>, ipc_recv: Receiver<Vec<u8>>) -> Self
+    pub fn new<H>(handler: Arc<H>, ipc_send: Sender<Packet>, ipc_recv: Receiver<Packet>) -> Self
     where
         H: Handler + Send + 'static, {
         let (joined_event_sender, joined_event_receiver) = channel::bounded(1);
@@ -66,7 +67,7 @@ impl Drop for Server {
     }
 }
 
-fn receiver<H>(handler: Arc<H>, ipc_send: Sender<Vec<u8>>, ipc_recv: Receiver<Vec<u8>>)
+fn receiver<H>(handler: Arc<H>, ipc_send: Sender<Packet>, ipc_recv: Receiver<Packet>)
 where
     H: Handler, {
     loop {
@@ -77,8 +78,9 @@ where
                 return
             }
         };
-        let response = handler.handle(&request);
-        // FIXME
-        ipc_send.send(format!("response:{}", String::from_utf8(response).unwrap()).as_bytes().to_vec()).unwrap();
+        let response = handler.handle(request.view());
+        let mut response_packet = Packet::new_response_from_request(request.view());
+        response_packet.append_data(&response);
+        ipc_send.send(response_packet).unwrap();
     }
 }

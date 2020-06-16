@@ -14,26 +14,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::packet::{Packet, PacketView, SlotId};
 use crossbeam::channel::{Receiver, Sender};
 
 pub struct Client {
-    ipc_send: Sender<Vec<u8>>,
-    ipc_recv: Receiver<Vec<u8>>,
+    ipc_send: Sender<Packet>,
+    ipc_recv: Receiver<Packet>,
 }
 
 impl Client {
-    pub fn new(ipc_send: Sender<Vec<u8>>, ipc_recv: Receiver<Vec<u8>>) -> Self {
+    pub fn new(ipc_send: Sender<Packet>, ipc_recv: Receiver<Packet>) -> Self {
         Client {
             ipc_send,
             ipc_recv,
         }
     }
 
-    pub fn call(&self, msg: &[u8]) -> Vec<u8> {
-        // FIXME
-        let msg = String::from_utf8(msg.to_vec()).unwrap();
-        self.ipc_send.send(format!("request:{}", msg).as_bytes().to_vec()).unwrap();
-        // Need call slots to find the exact response
+    pub fn call(&self, packet: PacketView) -> Packet {
+        // Please set call slot
+        let mut packet = packet.to_owned();
+        packet.set_slot(SlotId::new_request());
+        self.ipc_send.send(packet).unwrap();
         self.ipc_recv.recv().unwrap()
     }
 }

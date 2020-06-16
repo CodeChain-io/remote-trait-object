@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub use super::traits::PingInterface;
-use remote_trait_object::Context;
+use remote_trait_object::{Context, Packet};
 
 pub struct PingRequester<'a> {
     ping_rto: &'a Context,
@@ -32,11 +32,9 @@ impl<'a> PingRequester<'a> {
 impl<'a> PingInterface for PingRequester<'a> {
     fn ping(&self) -> String {
         let service_name = "Singleton";
-        let method_name = "ping";
-        // FIXME
-        String::from_utf8(
-            self.ping_rto.get_port().upgrade().unwrap().call(format!("{}:{}", service_name, method_name).as_bytes()),
-        )
-        .unwrap()
+        let method = "ping";
+        let packet = Packet::new_request(service_name.to_string(), method.to_string(), &[]);
+        let response = self.ping_rto.get_port().upgrade().unwrap().call(packet.view());
+        String::from_utf8(response.data().to_vec()).unwrap()
     }
 }

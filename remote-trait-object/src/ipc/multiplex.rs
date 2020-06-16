@@ -15,14 +15,25 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ipc::{IpcRecv, IpcSend, RecvError, Terminate};
+use crate::{Packet, PacketView};
 use crossbeam::channel::{self, Receiver, Sender};
 use parking_lot::Mutex;
 use std::thread;
 
+#[derive(Debug)]
+pub enum ForwardResult {
+    Request,
+    Response,
+}
+
+pub trait Forward {
+    fn forward(data: PacketView) -> ForwardResult;
+}
+
 pub struct MultiplexResult {
-    pub request_recv: Receiver<Vec<u8>>,
-    pub response_recv: Receiver<Vec<u8>>,
-    pub multiplexed_send: Sender<Vec<u8>>,
+    pub request_recv: Receiver<Packet>,
+    pub response_recv: Receiver<Packet>,
+    pub multiplexed_send: Sender<Packet>,
     pub multiplexer: Multiplexer,
 }
 
@@ -35,10 +46,11 @@ pub struct Multiplexer {
 }
 
 impl Multiplexer {
-    pub fn multiplex<IpcReceiver, IpcSender>(ipc_send: IpcSender, ipc_recv: IpcReceiver) -> MultiplexResult
+    pub fn multiplex<IpcReceiver, IpcSender, Forwarder>(ipc_send: IpcSender, ipc_recv: IpcReceiver) -> MultiplexResult
     where
         IpcReceiver: IpcRecv + 'static,
-        IpcSender: IpcSend + 'static, {
+        IpcSender: IpcSend + 'static,
+        Forwarder: Forward, {
         let (request_send, request_recv) = channel::bounded(1);
         let (response_send, response_recv) = channel::bounded(1);
         let receiver_terminator: Option<Mutex<Box<dyn Terminate>>> =
@@ -46,7 +58,7 @@ impl Multiplexer {
 
         let receiver_thread = thread::Builder::new()
             .name("receiver multiplexer".into())
-            .spawn(move || receiver_loop(ipc_recv, request_send, response_send))
+            .spawn(move || receiver_loop::<Forwarder, IpcReceiver>(ipc_recv, request_send, response_send))
             .unwrap();
 
         let (multiplexed_send, from_multiplexed_send) = channel::bounded(1);
@@ -79,9 +91,13 @@ impl Multiplexer {
     }
 }
 
-fn receiver_loop(ipc_recv: impl IpcRecv, request_send: Sender<Vec<u8>>, response_send: Sender<Vec<u8>>) {
+fn receiver_loop<Forwarder: Forward, Receiver: IpcRecv>(
+    ipc_recv: Receiver,
+    request_send: Sender<Packet>,
+    response_send: Sender<Packet>,
+) {
     loop {
-        let original_message = match ipc_recv.recv(None) {
+        let message = match ipc_recv.recv(None) {
             Err(RecvError::TimeOut) => panic!(),
             Err(RecvError::Termination) => {
                 debug!("ipc_recv is closed in multiplex");
@@ -90,19 +106,19 @@ fn receiver_loop(ipc_recv: impl IpcRecv, request_send: Sender<Vec<u8>>, response
             Ok(data) => data,
         };
 
-        // FIXME: parsing is not the role of the Multiplexer.
-        let message = parse(original_message.clone());
-        match message {
-            Some(ParseResult::Request(request)) => request_send.send(request).unwrap(),
-            Some(ParseResult::Response(response)) => response_send.send(response).unwrap(),
-            None => {
-                panic!("Receved invalid message {:?}", original_message);
-            }
+        let packet_view = PacketView::new(&message);
+        let forward_result = Forwarder::forward(packet_view);
+        let packet = Packet::new_from_buffer(message);
+
+        match forward_result {
+            ForwardResult::Request => request_send.send(packet).unwrap(),
+
+            ForwardResult::Response => response_send.send(packet).unwrap(),
         }
     }
 }
 
-fn sender_loop(ipc_sender: impl IpcSend, from_multiplexed_send: Receiver<Vec<u8>>, from_terminator: Receiver<()>) {
+fn sender_loop(ipc_sender: impl IpcSend, from_multiplexed_send: Receiver<Packet>, from_terminator: Receiver<()>) {
     loop {
         let data = select! {
             recv(from_multiplexed_send) -> msg => match msg {
@@ -122,33 +138,12 @@ fn sender_loop(ipc_sender: impl IpcSend, from_multiplexed_send: Receiver<Vec<u8>
                 }
             },
         };
-        ipc_sender.send(&data);
+        ipc_sender.send(&data.into_vec());
     }
 }
 
 impl Drop for Multiplexer {
     fn drop(&mut self) {
         assert!(self.receiver_thread.is_none(), "Please call shutdown");
-    }
-}
-
-enum ParseResult {
-    Request(Vec<u8>),
-    Response(Vec<u8>),
-}
-
-fn parse(message: Vec<u8>) -> Option<ParseResult> {
-    // FIXME
-    let message = String::from_utf8(message).unwrap();
-    let request_prefix = "request:";
-    let response_prefix = "response:";
-    if message.starts_with(request_prefix) {
-        // FIXME
-        Some(ParseResult::Request(message.trim_start_matches(request_prefix).as_bytes().to_vec()))
-    } else if message.starts_with(response_prefix) {
-        // FIXME
-        Some(ParseResult::Response(message.trim_start_matches(response_prefix).as_bytes().to_vec()))
-    } else {
-        None
     }
 }

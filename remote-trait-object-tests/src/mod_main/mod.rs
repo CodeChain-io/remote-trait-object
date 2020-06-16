@@ -59,14 +59,11 @@ impl StarterService {
 impl Service for StarterService {}
 
 impl Dispatch for StarterService {
-    fn dispatch_and_call(&self, msg: &[u8]) -> Vec<u8> {
-        // FIXME
-        let msg = String::from_utf8(msg.to_vec()).unwrap();
-        if msg == "start" {
-            // FIXMES
+    fn dispatch_and_call(&self, method: String, args: &[u8]) -> Vec<u8> {
+        if method == "start" {
             self.handler.start().as_bytes().to_vec()
         } else {
-            panic!("unexpected msg in main module from cmd {}", msg)
+            panic!("unexpected msg in main module from cmd {}({:?})", method, args)
         }
     }
 }
