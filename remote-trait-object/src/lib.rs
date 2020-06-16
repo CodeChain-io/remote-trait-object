@@ -19,10 +19,12 @@ extern crate crossbeam;
 #[macro_use]
 extern crate log;
 
+mod context;
 mod forwarder;
 pub mod ipc;
 mod port;
 mod service;
 
-pub use port::{Context, Port};
+pub use context::Context;
+pub use port::Port;
 pub use service::{Dispatch, Service};
