@@ -19,6 +19,7 @@ use super::mod_ping::main_like as ping_main;
 use crate::connection::{create_connection, ConnectionEnd};
 use cbasesandbox::ipc::intra::Intra;
 use cbasesandbox::ipc::{IpcRecv, IpcSend};
+use remote_trait_object::{Packet, PacketView};
 use std::time::Duration;
 
 fn init_logger() {
@@ -49,9 +50,11 @@ fn ping() {
     } = cmd_to_main;
 
     debug!("Send start cmd");
-    to_main.send(b"request:Singleton:start");
+    let packet = Packet::new_request("Singleton".to_string(), "start".to_string(), &[]);
+    to_main.send(&packet.into_vec());
     debug!("Recv pong response");
     let response = from_main.recv(Some(Duration::from_secs(1))).unwrap();
-    assert_eq!(response, b"response:pong received");
+    let response_packet = PacketView::new(&response);
+    assert_eq!(response_packet.data(), b"pong received");
     debug!("Test finished");
 }

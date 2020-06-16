@@ -14,15 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::packet::PacketView;
 use crate::port::Handler;
 use crate::service::Service;
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::fmt;
 
 type ServiceId = String;
 
 pub struct ServiceForwarder {
     service_handlers: RwLock<HashMap<ServiceId, Box<dyn Service>>>,
+}
+
+impl fmt::Debug for ServiceForwarder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.service_handlers.read().keys()).finish()
+    }
 }
 
 impl ServiceForwarder {
@@ -39,12 +47,11 @@ impl ServiceForwarder {
         }
     }
 
-    pub fn forward_and_call(&self, input: &[u8]) -> Vec<u8> {
-        let ParseResult {
-            service_name,
-            data,
-        } = parse(input);
-        self.service_handlers.read()[&service_name].dispatch_and_call(&data)
+    pub fn forward_and_call(&self, packet: PacketView) -> Vec<u8> {
+        let service_name = packet.service_name();
+        let method = packet.method();
+        let data = packet.data();
+        self.service_handlers.read()[&service_name].dispatch_and_call(method, data)
     }
 }
 
@@ -55,28 +62,7 @@ impl Default for ServiceForwarder {
 }
 
 impl Handler for ServiceForwarder {
-    fn handle(&self, input: &[u8]) -> Vec<u8> {
+    fn handle(&self, input: PacketView) -> Vec<u8> {
         self.forward_and_call(input)
-    }
-}
-
-struct ParseResult {
-    service_name: String,
-    data: Vec<u8>,
-}
-
-fn parse(message: &[u8]) -> ParseResult {
-    // FIXME
-    let message = String::from_utf8(message.to_vec()).unwrap();
-    let separator = message
-        .find(':')
-        .unwrap_or_else(|| panic!("Can't find : to parse service name. Original message: {}", message));
-
-    let service_name = message[..separator].to_string();
-    let data = message[separator + 1..].to_string();
-    ParseResult {
-        service_name,
-        // FIXME
-        data: data.as_bytes().to_vec(),
     }
 }

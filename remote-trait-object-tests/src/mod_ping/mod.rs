@@ -57,14 +57,11 @@ impl PingService {
 }
 
 impl Dispatch for PingService {
-    fn dispatch_and_call(&self, msg: &[u8]) -> Vec<u8> {
-        // FIXME
-        let msg = String::from_utf8(msg.to_vec()).unwrap();
-        if msg == "ping" {
-            // FIXME
+    fn dispatch_and_call(&self, method: String, args: &[u8]) -> Vec<u8> {
+        if method == "ping" {
             self.ping_handler.ping().as_bytes().to_vec()
         } else {
-            panic!("Unexpected message in ping {}", msg)
+            panic!("Unexpected message in ping {}({:?})", method, args)
         }
     }
 }

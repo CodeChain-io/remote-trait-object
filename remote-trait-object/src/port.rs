@@ -20,12 +20,13 @@ pub mod types;
 
 pub use self::types::Handler;
 use crate::forwarder::ServiceForwarder;
+use crate::packet::{Packet, PacketView};
 use crate::service::*;
 use client::Client;
 use std::sync::Arc;
 
 pub trait Port: Send + Sync + 'static {
-    fn call(&self, arg: &[u8]) -> Vec<u8>;
+    fn call(&self, packet: PacketView) -> Packet;
     fn delete_request(&self, id: ServiceObjectId);
     /// TODO: Assign id automatically and return it.
     fn register(&self, id: String, handle_to_register: Box<dyn Service>);
@@ -37,8 +38,8 @@ pub struct BasicPort {
 }
 
 impl Port for BasicPort {
-    fn call(&self, arg: &[u8]) -> Vec<u8> {
-        self.client.call(arg)
+    fn call(&self, packet: PacketView) -> Packet {
+        self.client.call(packet)
     }
 
     fn delete_request(&self, _id: ServiceObjectId) {

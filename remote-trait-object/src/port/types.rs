@@ -14,15 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::packet::PacketView;
+
 pub trait Handler: Send + Sync {
-    fn handle(&self, input: &[u8]) -> Vec<u8>;
+    fn handle(&self, input: PacketView) -> Vec<u8>;
 }
 
 impl<F> Handler for F
 where
-    F: Fn(&[u8]) -> Vec<u8> + Send + Sync,
+    F: Fn(PacketView) -> Vec<u8> + Send + Sync,
 {
-    fn handle(&self, input: &[u8]) -> Vec<u8> {
+    fn handle(&self, input: PacketView) -> Vec<u8> {
         self(input)
     }
 }
