@@ -29,7 +29,7 @@ pub trait Port: Send + Sync + 'static {
     fn call(&self, packet: PacketView) -> Packet;
     fn delete_request(&self, id: ServiceObjectId);
     /// TODO: Assign id automatically and return it.
-    fn register(&self, id: String, handle_to_register: Box<dyn Service>);
+    fn register(&self, id: String, handle_to_register: Box<dyn Dispatch>);
 }
 
 pub struct BasicPort {
@@ -46,7 +46,7 @@ impl Port for BasicPort {
         unimplemented!()
     }
 
-    fn register(&self, id: String, service: Box<dyn Service>) {
+    fn register(&self, id: String, service: Box<dyn Dispatch>) {
         self.registry.add_service(id, service);
     }
 }

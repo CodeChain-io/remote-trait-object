@@ -25,23 +25,12 @@ pub struct ServiceObjectId {
     pub(crate) index: InstanceId,
 }
 
-pub trait Dispatch {
+/// Exporter sides's interface to the service object. This will be implemented
+/// by each service trait's unique wrapper in the macro
+pub trait Dispatch: Send + Sync {
     fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8>;
 }
 
-pub trait Service: Dispatch + Send + Sync {}
-
-/// This trait will be implemented for `dyn MyService`, by the macro
-/// This trait is "dispatching the service", not a service who is dispatching.
-pub trait DispatchService<T: ?Sized + Service> {
-    fn dispatch_and_call(object: &T, method: MethodId, args: &[u8]) -> Vec<u8>;
-}
-
-#[macro_export]
-macro_rules! service_dispatch {
-    ($service_trait: path, $object: expr, $method: expr, $arg: expr) => {
-        <dyn $service_trait as remote_trait_object::DispatchService<dyn $service_trait>>::dispatch_and_call(
-            $object, $method, $arg,
-        )
-    };
+pub trait Service: Send + Sync {
+    // TODO: add fn get_port(&self) -> Weak<dyn Port>;
 }

@@ -15,13 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod impls;
-pub mod requester;
 mod traits;
 
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
-use impls::PingHandler;
+use impls::SimplePong;
 use remote_trait_object::Context;
+use traits::PingHandler;
+pub use traits::{Ping, PingRemote};
 
 pub fn main_like<IPC>(_args: Vec<String>, with_main: ConnectionEnd<IPC>) -> PingModule
 where
@@ -32,7 +33,11 @@ where
     } = with_main;
 
     let main_rto = Context::new(to_main, from_main);
-    main_rto.get_port().upgrade().unwrap().register("Singleton".to_owned(), Box::new(PingHandler {}));
+    main_rto
+        .get_port()
+        .upgrade()
+        .unwrap()
+        .register("Singleton".to_owned(), Box::new(PingHandler::new(Box::new(SimplePong {}))));
 
     PingModule {
         _main_rto: main_rto,

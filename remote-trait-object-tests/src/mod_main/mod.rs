@@ -21,9 +21,10 @@ mod traits;
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use context::Context;
-use impls::MainHandler;
+use impls::SimpleMain;
 use remote_trait_object::Context as RtoContext;
 use std::sync::Arc;
+use traits::MainHandler;
 
 pub fn main_like<IPC: Ipc>(
     _args: Vec<String>,
@@ -52,7 +53,7 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
             .get_port()
             .upgrade()
             .unwrap()
-            .register("Singleton".to_owned(), Box::new(MainHandler::new(Arc::clone(&ctx))));
+            .register("Singleton".to_owned(), Box::new(MainHandler::new(Box::new(SimpleMain::new(Arc::clone(&ctx))))));
         cmd_rto
     };
 
