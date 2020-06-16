@@ -14,18 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod client;
-mod server;
-mod types;
+pub mod client;
+pub mod server;
+pub mod types;
 
 pub use self::types::Handler;
 use crate::forwarder::ServiceForwarder;
-use crate::ipc::multiplex::{MultiplexResult, Multiplexer};
-use crate::ipc::{IpcRecv, IpcSend};
 use crate::service::*;
 use client::Client;
-use server::Server;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 
 pub trait Port: Send + Sync + 'static {
     fn call(&self, arg: String) -> String;
@@ -60,42 +57,8 @@ impl BasicPort {
             client,
         }
     }
-}
 
-pub struct Context {
-    multiplexer: Option<Multiplexer>,
-    server: Option<Server>,
-    port: Arc<BasicPort>,
-}
-
-impl Context {
-    pub fn new<S: IpcSend + 'static, R: IpcRecv + 'static>(ipc_send: S, ipc_recv: R) -> Self {
-        let MultiplexResult {
-            multiplexer,
-            request_recv,
-            response_recv,
-            multiplexed_send,
-        } = Multiplexer::multiplex(ipc_send, ipc_recv);
-        let client = client::Client::new(multiplexed_send.clone(), response_recv);
-        let port = Arc::new(BasicPort::new(client));
-        let server = server::Server::new(port.registry.clone(), multiplexed_send, request_recv);
-
-        Context {
-            multiplexer: Some(multiplexer),
-            server: Some(server),
-            port,
-        }
-    }
-
-    pub fn get_port(&self) -> Weak<dyn Port> {
-        Arc::downgrade(&self.port) as Weak<dyn Port>
-    }
-}
-
-impl Drop for Context {
-    fn drop(&mut self) {
-        // Shutdown multiplexer before server
-        self.multiplexer.take().unwrap().shutdown();
-        self.server.take().unwrap().shutdown();
+    pub fn get_registry(&self) -> Arc<ServiceForwarder> {
+        self.registry.clone()
     }
 }
