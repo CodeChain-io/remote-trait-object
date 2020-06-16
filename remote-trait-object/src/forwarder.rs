@@ -16,7 +16,7 @@
 
 use crate::packet::PacketView;
 use crate::port::Handler;
-use crate::service::Service;
+use crate::service::Dispatch;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::fmt;
@@ -24,7 +24,7 @@ use std::fmt;
 type ServiceId = String;
 
 pub struct ServiceForwarder {
-    service_handlers: RwLock<HashMap<ServiceId, Box<dyn Service>>>,
+    service_handlers: RwLock<HashMap<ServiceId, Box<dyn Dispatch>>>,
 }
 
 impl fmt::Debug for ServiceForwarder {
@@ -40,7 +40,7 @@ impl ServiceForwarder {
         }
     }
 
-    pub fn add_service(&self, name: ServiceId, service: Box<dyn Service>) {
+    pub fn add_service(&self, name: ServiceId, service: Box<dyn Dispatch>) {
         let insert_result = self.service_handlers.write().insert(name.clone(), service);
         if insert_result.is_some() {
             panic!("Duplicated service id {}", name);

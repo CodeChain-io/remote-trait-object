@@ -15,14 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod impls;
-pub mod requester;
 mod traits;
 
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
-use impls::PingHandler;
-use remote_trait_object::{Context, Dispatch, MethodId, Service};
-use traits::PingInterface;
+use impls::SimplePong;
+use remote_trait_object::Context;
+use traits::PingHandler;
+pub use traits::{Ping, PingRemote};
 
 pub fn main_like<IPC>(_args: Vec<String>, with_main: ConnectionEnd<IPC>) -> PingModule
 where
@@ -33,7 +33,11 @@ where
     } = with_main;
 
     let main_rto = Context::new(to_main, from_main);
-    main_rto.get_port().upgrade().unwrap().register("Singleton".to_owned(), Box::new(PingService::new()));
+    main_rto
+        .get_port()
+        .upgrade()
+        .unwrap()
+        .register("Singleton".to_owned(), Box::new(PingHandler::new(Box::new(SimplePong {}))));
 
     PingModule {
         _main_rto: main_rto,
@@ -43,27 +47,3 @@ where
 pub struct PingModule {
     _main_rto: Context,
 }
-
-struct PingService {
-    ping_handler: PingHandler,
-}
-
-impl PingService {
-    pub fn new() -> Self {
-        Self {
-            ping_handler: PingHandler {},
-        }
-    }
-}
-
-impl Dispatch for PingService {
-    fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
-        if method == 1 {
-            self.ping_handler.ping().as_bytes().to_vec()
-        } else {
-            panic!("Unexpected message in ping {}({:?})", method, args)
-        }
-    }
-}
-
-impl Service for PingService {}

@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::traits::PingInterface;
+use super::traits::Ping;
+use remote_trait_object::Service;
 
-pub struct PingHandler {}
+pub struct SimplePong {}
 
-impl PingInterface for PingHandler {
+impl Ping for SimplePong {
     fn ping(&self) -> String {
         "pong".to_string()
     }
 }
+
+impl Service for SimplePong {}

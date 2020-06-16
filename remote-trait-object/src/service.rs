@@ -25,8 +25,12 @@ pub struct ServiceObjectId {
     pub(crate) index: InstanceId,
 }
 
-pub trait Dispatch {
+/// Exporter sides's interface to the service object. This will be implemented
+/// by each service trait's unique wrapper in the macro
+pub trait Dispatch: Send + Sync {
     fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8>;
 }
 
-pub trait Service: Dispatch + Send + Sync {}
+pub trait Service: Send + Sync {
+    // TODO: add fn get_port(&self) -> Weak<dyn Port>;
+}

@@ -15,15 +15,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::context::Context;
-use super::traits::MainInterface;
-use crate::mod_ping::requester::{PingInterface, PingRequester};
+use super::traits::Main;
+use crate::mod_ping::{Ping, PingRemote};
+use remote_trait_object::Service;
 use std::sync::Arc;
 
-pub struct MainHandler {
+pub struct SimpleMain {
     ctx: Arc<Context>,
 }
 
-impl MainHandler {
+impl SimpleMain {
     pub fn new(ctx: Arc<Context>) -> Self {
         Self {
             ctx,
@@ -31,9 +32,11 @@ impl MainHandler {
     }
 }
 
-impl MainInterface for MainHandler {
+impl Main for SimpleMain {
     fn start(&self) -> String {
-        let ping_requester = PingRequester::new(self.ctx.ping_rto());
+        let ping_requester = PingRemote {
+            port: self.ctx.ping_rto().get_port(),
+        };
         let pong = ping_requester.ping();
         if pong == "pong" {
             "pong received".to_string()
@@ -42,3 +45,5 @@ impl MainInterface for MainHandler {
         }
     }
 }
+
+impl Service for SimpleMain {}
