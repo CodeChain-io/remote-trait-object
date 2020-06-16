@@ -16,7 +16,6 @@
 
 use cbasesandbox::ipc::Ipc;
 
-#[cfg(test)]
 pub fn create_connection<IPC>() -> (ConnectionEnd<IPC>, ConnectionEnd<IPC>)
 where
     IPC: Ipc, {

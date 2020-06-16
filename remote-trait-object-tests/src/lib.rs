@@ -14,15 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#[cfg(test)]
 #[macro_use]
 extern crate log;
 extern crate codechain_basesandbox as cbasesandbox;
 
+#[cfg(test)]
 mod connection;
-mod mod_main;
-mod mod_ping;
 #[cfg(test)]
 mod test_ping;
-
-pub use mod_main::main_like as mod_main_main;
-pub use mod_ping::main_like as mod_ping_main;

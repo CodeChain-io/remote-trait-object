@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::mod_main::main_like as main_main;
-use super::mod_ping::main_like as ping_main;
+mod mod_main;
+mod mod_ping;
+
+use self::mod_main::main_like as main_main;
+use self::mod_ping::main_like as ping_main;
 use crate::connection::{create_connection, ConnectionEnd};
 use cbasesandbox::ipc::intra::Intra;
 use cbasesandbox::ipc::{IpcRecv, IpcSend};
