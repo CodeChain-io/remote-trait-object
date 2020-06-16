@@ -24,6 +24,7 @@ mod forwarder;
 pub mod ipc;
 mod packet;
 mod port;
+mod queue;
 mod service;
 
 pub use context::Context;
