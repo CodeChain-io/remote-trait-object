@@ -17,7 +17,7 @@
 use crate::service::MethodId;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct SlotId(u32);
 
 impl fmt::Display for SlotId {
@@ -57,6 +57,19 @@ impl SlotId {
     pub fn change_to_response(&mut self) {
         assert!(self.0 >= SLOT_CALL_OR_RETURN_INDICATOR.0);
         self.0 -= SLOT_CALL_OR_RETURN_INDICATOR.0;
+    }
+
+    pub fn into_request(self) -> Self {
+        assert!(self.0 < SLOT_CALL_OR_RETURN_INDICATOR.0);
+        Self(self.0 + SLOT_CALL_OR_RETURN_INDICATOR.0)
+    }
+
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    pub fn as_raw(&self) -> u32 {
+        self.0
     }
 }
 
