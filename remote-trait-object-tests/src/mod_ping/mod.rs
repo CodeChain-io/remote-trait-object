@@ -21,7 +21,7 @@ mod traits;
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use impls::PingHandler;
-use remote_trait_object::{Context, Dispatch, Service};
+use remote_trait_object::{Context, Dispatch, MethodId, Service};
 use traits::PingInterface;
 
 pub fn main_like<IPC>(_args: Vec<String>, with_main: ConnectionEnd<IPC>) -> PingModule
@@ -57,8 +57,8 @@ impl PingService {
 }
 
 impl Dispatch for PingService {
-    fn dispatch_and_call(&self, method: String, args: &[u8]) -> Vec<u8> {
-        if method == "ping" {
+    fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
+        if method == 1 {
             self.ping_handler.ping().as_bytes().to_vec()
         } else {
             panic!("Unexpected message in ping {}({:?})", method, args)

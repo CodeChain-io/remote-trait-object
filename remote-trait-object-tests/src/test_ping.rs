@@ -50,7 +50,7 @@ fn ping() {
     } = cmd_to_main;
 
     debug!("Send start cmd");
-    let packet = Packet::new_request("Singleton".to_string(), "start".to_string(), &[]);
+    let packet = Packet::new_request("Singleton".to_string(), 1, &[]);
     to_main.send(&packet.into_vec());
     debug!("Recv pong response");
     let response = from_main.recv(Some(Duration::from_secs(1))).unwrap();

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::service::MethodId;
 use std::fmt;
 
 #[derive(Debug)]
@@ -68,8 +69,7 @@ struct PacketHeader {
     pub slot: SlotId,
     // FIXME: use integer indices for the service
     pub target_service_name: [u8; 100],
-    // FIXME: use integer indices for the method
-    pub method: [u8; 100],
+    pub method: MethodId,
 }
 
 impl PacketHeader {
@@ -77,14 +77,13 @@ impl PacketHeader {
         std::mem::size_of::<PacketHeader>()
     }
 
-    pub fn new(slot: SlotId, target_service_name: String, method: String) -> Self {
+    pub fn new(slot: SlotId, target_service_name: String, method: MethodId) -> Self {
         let mut header = PacketHeader {
             slot,
             target_service_name: [0; 100],
-            method: [0; 100],
+            method,
         };
         copy_string_to_array(target_service_name, &mut header.target_service_name);
-        copy_string_to_array(method, &mut header.method);
         header
     }
 
@@ -142,10 +141,9 @@ impl<'a> PacketView<'a> {
         String::from_utf8(service_name_buffer).unwrap()
     }
 
-    pub fn method(&self) -> String {
+    pub fn method(&self) -> MethodId {
         let header = PacketHeader::from_buffer(self.buffer);
-        let method_buffer = header.method.iter().cloned().take_while(|char| *char != 0).collect();
-        String::from_utf8(method_buffer).unwrap()
+        header.method
     }
 
     pub fn to_vec(&self) -> Vec<u8> {
@@ -189,7 +187,7 @@ impl Packet {
         packet
     }
 
-    pub fn new_request(service_name: String, method: String, args: &[u8]) -> Self {
+    pub fn new_request(service_name: String, method: MethodId, args: &[u8]) -> Self {
         let mut buffer = vec![0 as u8; PacketHeader::len() + args.len()];
         let header = PacketHeader::new(SlotId::new_request(), service_name, method);
         header.write(&mut buffer);

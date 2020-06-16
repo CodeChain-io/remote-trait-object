@@ -17,6 +17,7 @@
 use serde::{Deserialize, Serialize};
 
 pub type InstanceId = u32;
+pub type MethodId = u32;
 
 /// This struct represents an index to a service object in port server's registry
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
@@ -25,7 +26,7 @@ pub struct ServiceObjectId {
 }
 
 pub trait Dispatch {
-    fn dispatch_and_call(&self, method: String, args: &[u8]) -> Vec<u8>;
+    fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8>;
 }
 
 pub trait Service: Dispatch + Send + Sync {}

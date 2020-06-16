@@ -32,8 +32,7 @@ impl<'a> PingRequester<'a> {
 impl<'a> PingInterface for PingRequester<'a> {
     fn ping(&self) -> String {
         let service_name = "Singleton";
-        let method = "ping";
-        let packet = Packet::new_request(service_name.to_string(), method.to_string(), &[]);
+        let packet = Packet::new_request(service_name.to_string(), 1, &[]);
         let response = self.ping_rto.get_port().upgrade().unwrap().call(packet.view());
         String::from_utf8(response.data().to_vec()).unwrap()
     }

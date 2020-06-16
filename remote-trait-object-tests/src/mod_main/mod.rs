@@ -22,7 +22,7 @@ use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use context::Context;
 use impls::MainHandler;
-use remote_trait_object::{Context as RtoContext, Dispatch, Service};
+use remote_trait_object::{Context as RtoContext, Dispatch, MethodId, Service};
 use std::sync::Arc;
 use traits::MainInterface;
 
@@ -59,9 +59,9 @@ impl StarterService {
 impl Service for StarterService {}
 
 impl Dispatch for StarterService {
-    fn dispatch_and_call(&self, method: String, args: &[u8]) -> Vec<u8> {
+    fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
         trace!("StarterService received {}({:?}) request", method, args);
-        if method == "start" {
+        if method == 1 {
             self.handler.start().as_bytes().to_vec()
         } else {
             panic!("unexpected msg in main module from cmd {}({:?})", method, args)

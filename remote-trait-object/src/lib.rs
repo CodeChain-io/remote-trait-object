@@ -29,4 +29,4 @@ mod service;
 pub use context::Context;
 pub use packet::{Packet, PacketView, SlotId};
 pub use port::Port;
-pub use service::{Dispatch, Service};
+pub use service::{Dispatch, MethodId, Service};
