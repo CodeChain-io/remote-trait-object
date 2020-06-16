@@ -32,16 +32,16 @@ where
         sender: to_main,
     } = with_main;
 
-    let port_to_main = Context::new(to_main, from_main);
-    port_to_main.get_port().upgrade().unwrap().register("Singleton".to_owned(), Box::new(PingService::new()));
+    let main_rto = Context::new(to_main, from_main);
+    main_rto.get_port().upgrade().unwrap().register("Singleton".to_owned(), Box::new(PingService::new()));
 
     PingModule {
-        _port_to_main: port_to_main,
+        _main_rto: main_rto,
     }
 }
 
 pub struct PingModule {
-    _port_to_main: Context,
+    _main_rto: Context,
 }
 
 struct PingService {
