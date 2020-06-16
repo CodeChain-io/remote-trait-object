@@ -17,6 +17,7 @@
 use super::context::Context;
 use super::traits::MainInterface;
 use crate::mod_ping::requester::{PingInterface, PingRequester};
+use remote_trait_object::{Dispatch, MethodId, Service};
 use std::sync::Arc;
 
 pub struct MainHandler {
@@ -42,3 +43,11 @@ impl MainInterface for MainHandler {
         }
     }
 }
+
+impl Dispatch for MainHandler {
+    fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
+        remote_trait_object::service_dispatch!(MainInterface, self, method, args)
+    }
+}
+
+impl Service for MainHandler {}

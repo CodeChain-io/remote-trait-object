@@ -30,3 +30,18 @@ pub trait Dispatch {
 }
 
 pub trait Service: Dispatch + Send + Sync {}
+
+/// This trait will be implemented for `dyn MyService`, by the macro
+/// This trait is "dispatching the service", not a service who is dispatching.
+pub trait DispatchService<T: ?Sized + Service> {
+    fn dispatch_and_call(object: &T, method: MethodId, args: &[u8]) -> Vec<u8>;
+}
+
+#[macro_export]
+macro_rules! service_dispatch {
+    ($service_trait: path, $object: expr, $method: expr, $arg: expr) => {
+        <dyn $service_trait as remote_trait_object::DispatchService<dyn $service_trait>>::dispatch_and_call(
+            $object, $method, $arg,
+        )
+    };
+}

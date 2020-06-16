@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::traits::PingInterface;
+use remote_trait_object::{Dispatch, MethodId, Service};
 
 pub struct PingHandler {}
 
@@ -23,3 +24,11 @@ impl PingInterface for PingHandler {
         "pong".to_string()
     }
 }
+
+impl Dispatch for PingHandler {
+    fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
+        remote_trait_object::service_dispatch!(PingInterface, self, method, args)
+    }
+}
+
+impl Service for PingHandler {}

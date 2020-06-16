@@ -14,6 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub trait PingInterface {
+use remote_trait_object::{DispatchService, MethodId, Service};
+
+pub trait PingInterface: Service {
     fn ping(&self) -> String;
+}
+
+impl DispatchService<dyn PingInterface> for dyn PingInterface {
+    fn dispatch_and_call(object: &dyn PingInterface, method: MethodId, args: &[u8]) -> Vec<u8> {
+        trace!("PingInterface received {}({:?}) request", method, args);
+        if method == 1 {
+            object.ping().as_bytes().to_vec()
+        } else {
+            panic!("Dispatch failed: {}({:?})", method, args)
+        }
+    }
 }

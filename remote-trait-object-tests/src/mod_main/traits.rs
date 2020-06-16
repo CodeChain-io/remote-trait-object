@@ -14,6 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub trait MainInterface {
+use remote_trait_object::{DispatchService, MethodId, Service};
+
+pub trait MainInterface: Service {
     fn start(&self) -> String;
+}
+
+impl DispatchService<dyn MainInterface> for dyn MainInterface {
+    fn dispatch_and_call(object: &dyn MainInterface, method: MethodId, args: &[u8]) -> Vec<u8> {
+        trace!("MainInterface received {}({:?}) request", method, args);
+        if method == 1 {
+            object.start().as_bytes().to_vec()
+        } else {
+            panic!("Dispatch failed: {}({:?})", method, args)
+        }
+    }
 }

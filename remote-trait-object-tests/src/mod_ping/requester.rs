@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub use super::traits::PingInterface;
-use remote_trait_object::{Context, Packet};
+use remote_trait_object::{Context, Dispatch, MethodId, Packet, Service};
 
 pub struct PingRequester<'a> {
     ping_rto: &'a Context,
@@ -37,3 +37,11 @@ impl<'a> PingInterface for PingRequester<'a> {
         String::from_utf8(response.data().to_vec()).unwrap()
     }
 }
+
+impl<'a> Dispatch for PingRequester<'a> {
+    fn dispatch_and_call(&self, _method: MethodId, _args: &[u8]) -> Vec<u8> {
+        panic!("You can't dispatch an imported service")
+    }
+}
+
+impl<'a> Service for PingRequester<'a> {}
