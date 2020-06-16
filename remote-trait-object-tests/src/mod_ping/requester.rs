@@ -18,13 +18,13 @@ pub use super::traits::PingInterface;
 use remote_trait_object::Context;
 
 pub struct PingRequester<'a> {
-    port: &'a Context,
+    ping_rto: &'a Context,
 }
 
 impl<'a> PingRequester<'a> {
-    pub fn new(port: &'a Context) -> Self {
+    pub fn new(ping_rto: &'a Context) -> Self {
         Self {
-            port,
+            ping_rto,
         }
     }
 }
@@ -33,6 +33,6 @@ impl<'a> PingInterface for PingRequester<'a> {
     fn ping(&self) -> String {
         let service_name = "Singleton";
         let method_name = "ping";
-        self.port.get_port().upgrade().unwrap().call(format!("{}:{}", service_name, method_name))
+        self.ping_rto.get_port().upgrade().unwrap().call(format!("{}:{}", service_name, method_name))
     }
 }

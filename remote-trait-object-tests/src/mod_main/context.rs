@@ -24,8 +24,8 @@ pub struct Context {
 }
 
 struct ContextInner {
-    pub cmd_port: RtoContext,
-    pub ping_port: RtoContext,
+    pub cmd_rto: RtoContext,
+    pub ping_rto: RtoContext,
 }
 
 impl Debug for ContextInner {
@@ -41,16 +41,16 @@ impl Context {
         }
     }
 
-    pub fn initialize_ports(&self, cmd_port: RtoContext, ping_port: RtoContext) {
+    pub fn initialize_rtos(&self, cmd_rto: RtoContext, ping_rto: RtoContext) {
         self.inner
             .set(ContextInner {
-                cmd_port,
-                ping_port,
+                cmd_rto,
+                ping_rto,
             })
-            .expect("initialize_portrs should be called only once");
+            .expect("initialize_rtos should be called only once");
     }
 
-    pub fn ping_port(&self) -> &RtoContext {
-        &self.inner.get().expect("Context is initalized").ping_port
+    pub fn ping_rto(&self) -> &RtoContext {
+        &self.inner.get().expect("Context is initalized").ping_rto
     }
 }

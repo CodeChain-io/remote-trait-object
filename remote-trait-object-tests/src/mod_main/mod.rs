@@ -70,20 +70,21 @@ impl Dispatch for StarterService {
 
 fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd<IPC>) -> Arc<Context> {
     let ctx = Arc::new(Context::new());
-    let cmd_port = {
+    let cmd_rto = {
         let ConnectionEnd {
             receiver: from_cmd,
             sender: to_cmd,
         } = with_cmd;
-        let port = RtoContext::new(to_cmd, from_cmd);
-        port.get_port()
+        let cmd_rto = RtoContext::new(to_cmd, from_cmd);
+        cmd_rto
+            .get_port()
             .upgrade()
             .unwrap()
             .register("Singleton".to_owned(), Box::new(StarterService::new(Arc::clone(&ctx))));
-        port
+        cmd_rto
     };
 
-    let ping_port = {
+    let ping_rto = {
         let ConnectionEnd {
             receiver: from_ping,
             sender: to_ping,
@@ -91,6 +92,6 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
         RtoContext::new(to_ping, from_ping)
     };
 
-    ctx.initialize_ports(cmd_port, ping_port);
+    ctx.initialize_rtos(cmd_rto, ping_rto);
     ctx
 }
