@@ -60,6 +60,7 @@ impl Service for StarterService {}
 
 impl Dispatch for StarterService {
     fn dispatch_and_call(&self, method: String, args: &[u8]) -> Vec<u8> {
+        trace!("StarterService received {}({:?}) request", method, args);
         if method == "start" {
             self.handler.start().as_bytes().to_vec()
         } else {

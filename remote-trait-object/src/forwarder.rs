@@ -51,7 +51,11 @@ impl ServiceForwarder {
         let service_name = packet.service_name();
         let method = packet.method();
         let data = packet.data();
-        self.service_handlers.read()[&service_name].dispatch_and_call(method, data)
+        let handlers = self.service_handlers.read();
+        handlers
+            .get(&service_name)
+            .unwrap_or_else(|| panic!("Fail to find {} from ServiceForwarder", service_name))
+            .dispatch_and_call(method, data)
     }
 }
 

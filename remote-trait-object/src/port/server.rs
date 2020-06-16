@@ -78,7 +78,10 @@ where
                 return
             }
         };
+
+        trace!("Packet received in Port Server {}", request);
         let response = handler.handle(request.view());
+        trace!("Handler result in Port Server {:?}", response);
         let mut response_packet = Packet::new_response_from_request(request.view());
         response_packet.append_data(&response);
         ipc_send.send(response_packet).unwrap();
