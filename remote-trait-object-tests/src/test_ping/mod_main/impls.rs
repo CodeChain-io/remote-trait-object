@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::super::mod_ping::{Ping, PingRemote};
 use super::context::Context;
 use super::traits::Main;
-use crate::mod_ping::{Ping, PingRemote};
 use remote_trait_object::Service;
 use std::sync::Arc;
 
