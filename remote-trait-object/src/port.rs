@@ -32,14 +32,16 @@ pub trait Port: Send + Sync + 'static {
     fn register(&self, id: String, handle_to_register: Box<dyn Dispatch>);
 }
 
+#[derive(Debug)]
 pub struct BasicPort {
     registry: Arc<ServiceForwarder>,
-    client: Client,
+    /// client is None only in the drop function.
+    client: Option<Client>,
 }
 
 impl Port for BasicPort {
     fn call(&self, packet: PacketView) -> Packet {
-        self.client.call(packet)
+        self.client.as_ref().unwrap().call(packet)
     }
 
     fn delete_request(&self, _id: ServiceObjectId) {
@@ -55,11 +57,22 @@ impl BasicPort {
     pub fn new(client: Client) -> Self {
         Self {
             registry: Arc::new(ServiceForwarder::new()),
-            client,
+            client: Some(client),
         }
     }
 
     pub fn get_registry(&self) -> Arc<ServiceForwarder> {
         self.registry.clone()
+    }
+
+    /// Please call shutdown after Multiplexer::shutdown
+    pub fn shutdown(mut self) {
+        self.client.take().unwrap().shutdown();
+    }
+}
+
+impl Drop for BasicPort {
+    fn drop(&mut self) {
+        assert!(self.client.is_none(), "Please call shutdown");
     }
 }

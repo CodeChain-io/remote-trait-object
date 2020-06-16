@@ -23,7 +23,7 @@ use std::sync::{Arc, Weak};
 pub struct Context {
     multiplexer: Option<Multiplexer>,
     server: Option<Server>,
-    port: Arc<BasicPort>,
+    port: Option<Arc<BasicPort>>,
 }
 
 impl Context {
@@ -41,20 +41,22 @@ impl Context {
         Context {
             multiplexer: Some(multiplexer),
             server: Some(server),
-            port,
+            port: Some(port),
         }
     }
 
     pub fn get_port(&self) -> Weak<dyn Port> {
-        Arc::downgrade(&self.port) as Weak<dyn Port>
+        Arc::downgrade(&self.port.clone().unwrap()) as Weak<dyn Port>
     }
 }
 
 impl Drop for Context {
     fn drop(&mut self) {
-        // Shutdown multiplexer before server
         self.multiplexer.take().unwrap().shutdown();
+        // Shutdown server after multiplexer
         self.server.take().unwrap().shutdown();
+        // Shutdown port after multiplexer
+        Arc::try_unwrap(self.port.take().unwrap()).unwrap().shutdown();
     }
 }
 
