@@ -107,6 +107,7 @@ fn receiver_loop<Forwarder: Forward, Receiver: IpcRecv>(
         };
 
         let packet_view = PacketView::new(&message);
+        trace!("Receive message in multiplex {}", packet_view);
         let forward_result = Forwarder::forward(packet_view);
         let packet = Packet::new_from_buffer(message);
 
