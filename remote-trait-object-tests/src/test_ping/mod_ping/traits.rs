@@ -31,7 +31,7 @@ impl Service for PingRemote {}
 
 impl Ping for PingRemote {
     fn ping(&self) -> String {
-        let packet = Packet::new_request("Singleton".to_string(), 1, &[]);
+        let packet = Packet::new_request(0, 1, &[]);
         let response = self.port.upgrade().unwrap().call(packet.view());
         String::from_utf8(response.data().to_vec()).unwrap()
     }

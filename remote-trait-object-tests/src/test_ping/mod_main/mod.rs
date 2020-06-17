@@ -49,11 +49,12 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
             sender: to_cmd,
         } = with_cmd;
         let cmd_rto = RtoContext::new(to_cmd, from_cmd);
-        cmd_rto
+        // TODO: use this
+        let _handle_to_export = cmd_rto
             .get_port()
             .upgrade()
             .unwrap()
-            .register("Singleton".to_owned(), Box::new(MainHandler::new(Box::new(SimpleMain::new(Arc::clone(&ctx))))));
+            .register(Arc::new(MainHandler::new(Box::new(SimpleMain::new(Arc::clone(&ctx))))));
         cmd_rto
     };
 
