@@ -15,6 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod intra;
+pub mod unix_socket;
+
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 pub use remote_trait_object::ipc::{IpcRecv, IpcSend, RecvError, Terminate};
