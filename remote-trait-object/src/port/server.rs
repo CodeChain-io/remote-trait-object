@@ -16,6 +16,7 @@
 
 use super::types::Handler;
 use crate::packet::Packet;
+use crate::queue::{PopError, Queue};
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{self, Receiver, Sender};
 use std::sync::Arc;
@@ -47,7 +48,7 @@ impl Server {
     }
 
     pub fn shutdown(mut self) {
-        match self.joined_event_receiver.recv_timeout(time::Duration::from_millis(100)) {
+        match self.joined_event_receiver.recv_timeout(time::Duration::from_millis(500)) {
             Err(Timeout) => {
                 panic!("There may be a deadlock or misuse of Server. Call Server::shutdown when ipc_recv is closed");
             }
@@ -69,21 +70,62 @@ impl Drop for Server {
 
 fn receiver<H>(handler: Arc<H>, ipc_send: Sender<Packet>, ipc_recv: Receiver<Packet>)
 where
-    H: Handler, {
-    loop {
-        let request = match ipc_recv.recv() {
-            Ok(request) => request,
-            Err(_err) => {
-                // ipc_recv is closed.
-                return
-            }
-        };
+    H: Handler + 'static, {
+    let received_packets = Arc::new(Queue::new(100));
+    let joiners = create_handler_threads(handler, ipc_send, Arc::clone(&received_packets));
 
-        trace!("Packet received in Port Server {}", request);
-        let response = handler.handle(request.view());
-        trace!("Handler result in Port Server {:?}", response);
-        let mut response_packet = Packet::new_response_from_request(request.view());
-        response_packet.append_data(&response);
-        ipc_send.send(response_packet).unwrap();
+    while let Ok(request) = ipc_recv.recv() {
+        received_packets.push(request).expect("Queue will close after this loop");
     }
+    // ipc_recv is closed.
+
+    received_packets.close();
+    for joiner in joiners {
+        joiner.join().unwrap();
+    }
+}
+
+fn create_handler_threads<H>(
+    handler: Arc<H>,
+    ipc_send: Sender<Packet>,
+    received_packets: Arc<Queue<Packet>>,
+) -> Vec<thread::JoinHandle<()>>
+where
+    H: Handler + 'static, {
+    let mut joins = Vec::new();
+
+    fn handler_loop<H: Handler>(handler: Arc<H>, ipc_send: Sender<Packet>, received_packets: Arc<Queue<Packet>>) {
+        loop {
+            let request = match received_packets.pop(None) {
+                Ok(packet) => packet,
+                Err(PopError::Timeout) => unreachable!(),
+                Err(PopError::QueueClosed) => break,
+            };
+
+            trace!("Packet received in Port Server {}", request);
+            let response = handler.handle(request.view());
+            trace!("Handler result in Port Server {:?}", response);
+            let mut response_packet = Packet::new_response_from_request(request.view());
+            response_packet.append_data(&response);
+            if let Err(err) = ipc_send.send(response_packet) {
+                trace!("Multiplexer is dropped while sending a packet {:?}", err.into_inner());
+                break
+            };
+        }
+    }
+
+    // FIXME: get thread count from config
+    for i in 0..4 {
+        let packet_queue_ = Arc::clone(&received_packets);
+        let ipc_send_ = ipc_send.clone();
+        let handler_ = Arc::clone(&handler);
+
+        let join_handle = thread::Builder::new()
+            .name(format!("port server send {}", i))
+            .spawn(move || handler_loop(handler_, ipc_send_, packet_queue_))
+            .unwrap();
+        joins.push(join_handle);
+    }
+
+    joins
 }
