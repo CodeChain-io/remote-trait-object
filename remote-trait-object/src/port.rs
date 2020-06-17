@@ -24,12 +24,18 @@ use crate::forwarder::ServiceObjectId;
 use crate::packet::{Packet, PacketView};
 use crate::service::*;
 use client::Client;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 pub trait Port: Send + Sync + 'static {
     fn call(&self, packet: PacketView) -> Packet;
     fn delete_request(&self, id: ServiceObjectId);
     fn register(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange;
+}
+
+/// Weak::new() is not implemented for ?Sized.
+/// See https://github.com/rust-lang/rust/issues/50513
+pub fn null_weak_port() -> Weak<dyn Port> {
+    Weak::<BasicPort>::new() as Weak<dyn Port>
 }
 
 #[derive(Debug)]
