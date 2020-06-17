@@ -16,21 +16,21 @@
 
 use crossbeam::channel::{bounded, Receiver, Sender};
 use parking_lot::Mutex;
-use std::sync::Arc;
 
 /// Blocking concurrent Queue. (Crossbeam's queue doens't block)
+/// Please use the queue with Arc
 #[derive(Debug)]
 pub struct Queue<T> {
-    sender: Arc<Mutex<Sender<T>>>,
-    recver: Arc<Mutex<Receiver<T>>>,
+    sender: Mutex<Sender<T>>,
+    recver: Mutex<Receiver<T>>,
 }
 
 impl<T> Queue<T> {
     pub fn new(size: usize) -> Self {
         let (sender, recver) = bounded(size);
         Queue {
-            sender: Arc::new(Mutex::new(sender)),
-            recver: Arc::new(Mutex::new(recver)),
+            sender: Mutex::new(sender),
+            recver: Mutex::new(recver),
         }
     }
 
