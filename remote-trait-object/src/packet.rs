@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::forwarder::ServiceObjectId;
 use crate::service::MethodId;
 use std::fmt;
 
@@ -80,8 +81,7 @@ const SLOT_CALL_OR_RETURN_INDICATOR: SlotId = SlotId(1000);
 #[repr(C)]
 struct PacketHeader {
     pub slot: SlotId,
-    // FIXME: use integer indices for the service
-    pub target_service_name: [u8; 100],
+    pub service_object_id: ServiceObjectId,
     pub method: MethodId,
 }
 
@@ -90,14 +90,12 @@ impl PacketHeader {
         std::mem::size_of::<PacketHeader>()
     }
 
-    pub fn new(slot: SlotId, target_service_name: String, method: MethodId) -> Self {
-        let mut header = PacketHeader {
+    pub fn new(slot: SlotId, service_object_id: ServiceObjectId, method: MethodId) -> Self {
+        PacketHeader {
             slot,
-            target_service_name: [0; 100],
+            service_object_id,
             method,
-        };
-        copy_string_to_array(target_service_name, &mut header.target_service_name);
-        header
+        }
     }
 
     pub fn from_buffer(buffer: &[u8]) -> Self {
@@ -111,11 +109,6 @@ impl PacketHeader {
     }
 }
 
-fn copy_string_to_array(text: String, buffer: &mut [u8]) {
-    let text_buffer = text.as_bytes();
-    buffer[..text_buffer.len()].copy_from_slice(text_buffer);
-}
-
 #[derive(Debug)]
 pub struct PacketView<'a> {
     buffer: &'a [u8],
@@ -123,7 +116,7 @@ pub struct PacketView<'a> {
 
 impl<'a> fmt::Display for PacketView<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Packet {{ slot: {}, service: {}, method: {} }}", self.slot(), self.service_name(), self.method())
+        write!(f, "Packet {{ slot: {}, object id: {}, method: {} }}", self.slot(), self.object_id(), self.method())
     }
 }
 
@@ -147,11 +140,8 @@ impl<'a> PacketView<'a> {
         header.slot
     }
 
-    pub fn service_name(&self) -> String {
-        let header = PacketHeader::from_buffer(self.buffer);
-        let service_name_buffer: Vec<u8> =
-            header.target_service_name.iter().cloned().take_while(|char| *char != 0).collect();
-        String::from_utf8(service_name_buffer).unwrap()
+    pub fn object_id(&self) -> ServiceObjectId {
+        PacketHeader::from_buffer(self.buffer).service_object_id
     }
 
     pub fn method(&self) -> MethodId {
@@ -200,9 +190,9 @@ impl Packet {
         packet
     }
 
-    pub fn new_request(service_name: String, method: MethodId, args: &[u8]) -> Self {
+    pub fn new_request(service_object_id: ServiceObjectId, method: MethodId, args: &[u8]) -> Self {
         let mut buffer = vec![0 as u8; PacketHeader::len() + args.len()];
-        let header = PacketHeader::new(SlotId::new_request(), service_name, method);
+        let header = PacketHeader::new(SlotId::new_request(), service_object_id, method);
         header.write(&mut buffer);
         buffer[PacketHeader::len()..].copy_from_slice(args);
         Self {

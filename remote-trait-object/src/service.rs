@@ -14,16 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::forwarder::ServiceObjectId;
 use serde::{Deserialize, Serialize};
 
-pub type InstanceId = u32;
 pub type MethodId = u32;
 
-/// This struct represents an index to a service object in port server's registry
+/// This represents transportable identifier of the service object
+/// and should be enough to construct a handle along with the pointer to the port
+/// which this service belong to
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
-pub struct ServiceObjectId {
-    pub(crate) index: InstanceId,
-}
+pub struct HandleToExchange(pub(crate) ServiceObjectId);
 
 /// Exporter sides's interface to the service object. This will be implemented
 /// by each service trait's unique wrapper in the macro

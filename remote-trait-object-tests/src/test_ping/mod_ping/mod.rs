@@ -21,6 +21,7 @@ use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use impls::SimplePong;
 use remote_trait_object::Context;
+use std::sync::Arc;
 use traits::PingHandler;
 pub use traits::{Ping, PingRemote};
 
@@ -33,11 +34,9 @@ where
     } = with_main;
 
     let main_rto = Context::new(to_main, from_main);
-    main_rto
-        .get_port()
-        .upgrade()
-        .unwrap()
-        .register("Singleton".to_owned(), Box::new(PingHandler::new(Box::new(SimplePong {}))));
+    // TODO: use this
+    let _handle_to_export =
+        main_rto.get_port().upgrade().unwrap().register(Arc::new(PingHandler::new(Box::new(SimplePong {}))));
 
     PingModule {
         _main_rto: main_rto,

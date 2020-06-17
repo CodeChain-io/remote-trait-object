@@ -18,43 +18,51 @@ use crate::packet::PacketView;
 use crate::port::Handler;
 use crate::service::Dispatch;
 use parking_lot::RwLock;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
+use std::sync::Arc;
 
-type ServiceId = String;
+pub type ServiceObjectId = u32;
 
 pub struct ServiceForwarder {
-    service_handlers: RwLock<HashMap<ServiceId, Box<dyn Dispatch>>>,
+    service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>>,
+    available_ids: RwLock<VecDeque<ServiceObjectId>>,
 }
 
 impl fmt::Debug for ServiceForwarder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.service_handlers.read().keys()).finish()
+        f.debug_list().entries(self.service_objects.read().keys()).finish()
     }
 }
 
 impl ServiceForwarder {
     pub fn new() -> Self {
         Self {
-            service_handlers: Default::default(),
+            service_objects: Default::default(),
+            available_ids: RwLock::new({
+                let mut queue = VecDeque::new();
+                for i in 0..100 {
+                    queue.push_back(i)
+                }
+                queue
+            }),
         }
     }
 
-    pub fn add_service(&self, name: ServiceId, service: Box<dyn Dispatch>) {
-        let insert_result = self.service_handlers.write().insert(name.clone(), service);
-        if insert_result.is_some() {
-            panic!("Duplicated service id {}", name);
-        }
+    pub fn register_service_object(&self, service_object: Arc<dyn Dispatch>) -> ServiceObjectId {
+        let id = self.available_ids.write().pop_front().expect("Too many service objects had been created");
+        assert!(self.service_objects.write().insert(id, service_object).is_none());
+        id
     }
 
     pub fn forward_and_call(&self, packet: PacketView) -> Vec<u8> {
-        let service_name = packet.service_name();
+        let object_id = packet.object_id();
         let method = packet.method();
         let data = packet.data();
-        let handlers = self.service_handlers.read();
+        let handlers = self.service_objects.read();
         handlers
-            .get(&service_name)
-            .unwrap_or_else(|| panic!("Fail to find {} from ServiceForwarder", service_name))
+            .get(&object_id)
+            .unwrap_or_else(|| panic!("Fail to find {} from ServiceForwarder", object_id))
             .dispatch_and_call(method, data)
     }
 }

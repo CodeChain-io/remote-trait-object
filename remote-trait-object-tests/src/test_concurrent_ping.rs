@@ -63,7 +63,8 @@ fn ping() {
             let joiner = thread::Builder::new()
                 .name(format!("ping sender {}", i))
                 .spawn(move || {
-                    let request = Packet::new_request("ping".to_string(), 1, &[]);
+                    // FIXME: 0 is temporary value assuming singleton service object
+                    let request = Packet::new_request(0, 1, &[]);
                     let response = port.call(request.view());
                     assert_eq!(response.data(), b"pong");
                 })
@@ -87,14 +88,11 @@ fn create_ping_module(connection: ConnectionEnd<Intra>, barrier: Arc<Barrier>) -
 
     let cmd_rto = Context::new(to_cmd, from_cmd);
     let port = cmd_rto.get_port().upgrade().unwrap();
-    port.register(
-        "ping".to_string(),
-        Box::new(move |_method: u32, _args: &[u8]| {
-            // Wait until barrier.wait is called in concurrently
-            barrier.wait();
-            b"pong".to_vec()
-        }),
-    );
+    let _handle_to_export = port.register(Arc::new(move |_method: u32, _args: &[u8]| {
+        // Wait until barrier.wait is called in concurrently
+        barrier.wait();
+        b"pong".to_vec()
+    }));
 
     cmd_rto
 }
