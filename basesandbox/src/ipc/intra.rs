@@ -94,28 +94,7 @@ pub struct Intra {
     recv: IntraRecv,
 }
 
-impl Ipc for Intra {
-    type SendHalf = IntraSend;
-    type RecvHalf = IntraRecv;
-
-    fn arguments_for_both_ends() -> (Vec<u8>, Vec<u8>) {
-        let key_server = generate_random_name();
-        let key_client = generate_random_name();
-
-        let (intra_a, intra_b) = Self::new_both_ends();
-
-        add_ends(key_server.clone(), RegisteredIpcEnds {
-            is_server: true,
-            intra: intra_a,
-        });
-        add_ends(key_client.clone(), RegisteredIpcEnds {
-            is_server: false,
-            intra: intra_b,
-        });
-
-        (serde_cbor::to_vec(&key_server).unwrap(), serde_cbor::to_vec(&key_client).unwrap())
-    }
-
+impl Intra {
     fn new_both_ends() -> (Self, Self) {
         let (a_sender, a_receiver) = bounded(256);
         let (a_termination_sender, a_termination_receiver) = bounded(1);
@@ -141,6 +120,29 @@ impl Ipc for Intra {
         };
 
         (a_intra, b_intra)
+    }
+}
+
+impl Ipc for Intra {
+    type SendHalf = IntraSend;
+    type RecvHalf = IntraRecv;
+
+    fn arguments_for_both_ends() -> (Vec<u8>, Vec<u8>) {
+        let key_server = generate_random_name();
+        let key_client = generate_random_name();
+
+        let (intra_a, intra_b) = Self::new_both_ends();
+
+        add_ends(key_server.clone(), RegisteredIpcEnds {
+            is_server: true,
+            intra: intra_a,
+        });
+        add_ends(key_client.clone(), RegisteredIpcEnds {
+            is_server: false,
+            intra: intra_b,
+        });
+
+        (serde_cbor::to_vec(&key_server).unwrap(), serde_cbor::to_vec(&key_client).unwrap())
     }
 
     fn new(data: Vec<u8>) -> Self {

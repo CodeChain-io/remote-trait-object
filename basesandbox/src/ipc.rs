@@ -26,7 +26,6 @@ pub trait Ipc: Sized + IpcSend + IpcRecv {
     /// Note that both sides' new() must be called concurrently; they will be completed only if
     /// both run at the same time.
     fn arguments_for_both_ends() -> (Vec<u8>, Vec<u8>);
-    fn new_both_ends() -> (Self, Self);
 
     type SendHalf: IpcSend;
     type RecvHalf: IpcRecv;

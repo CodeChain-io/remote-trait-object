@@ -15,11 +15,25 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cbasesandbox::ipc::Ipc;
+use std::thread;
 
 pub fn create_connection<IPC>() -> (ConnectionEnd<IPC>, ConnectionEnd<IPC>)
 where
     IPC: Ipc, {
-    let (a_to_b, b_to_a) = IPC::new_both_ends();
+    let (a_to_b_args, b_to_a_args) = IPC::arguments_for_both_ends();
+    let (a_to_b, b_to_a) = {
+        let a_to_b_thread = thread::Builder::new()
+            .name("create_connection_a_to_b".to_string())
+            .spawn(move || IPC::new(a_to_b_args))
+            .unwrap();
+        let b_to_a_thread = thread::Builder::new()
+            .name("create_connection_b_to_a".to_string())
+            .spawn(move || IPC::new(b_to_a_args))
+            .unwrap();
+
+        (a_to_b_thread.join().unwrap(), b_to_a_thread.join().unwrap())
+    };
+
     let (send_to_b, recv_in_a) = a_to_b.split();
     let (send_to_a, recv_in_b) = b_to_a.split();
 
