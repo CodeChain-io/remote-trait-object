@@ -15,7 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::forwarder::ServiceObjectId;
+use crate::port::Port;
 use serde::{Deserialize, Serialize};
+use std::sync::Weak;
 
 pub type MethodId = u32;
 
@@ -24,6 +26,12 @@ pub type MethodId = u32;
 /// which this service belong to
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct HandleToExchange(pub(crate) ServiceObjectId);
+
+/// Remote service will carry this.
+pub struct Handle {
+    pub id: ServiceObjectId,
+    pub port: Weak<dyn Port>,
+}
 
 /// Exporter sides's interface to the service object. This will be implemented
 /// by each service trait's unique wrapper in the macro

@@ -17,7 +17,7 @@
 use super::super::mod_ping::{Ping, PingRemote};
 use super::context::Context;
 use super::traits::Main;
-use remote_trait_object::Service;
+use remote_trait_object::{Handle, Service};
 use std::sync::Arc;
 
 pub struct SimpleMain {
@@ -34,8 +34,12 @@ impl SimpleMain {
 
 impl Main for SimpleMain {
     fn start(&self) -> String {
+        // FIXME: Remote struct can be made only by import
         let ping_requester = PingRemote {
-            port: self.ctx.ping_rto().get_port(),
+            handle: Handle {
+                port: self.ctx.ping_rto().get_port(),
+                id: 0,
+            },
         };
         let pong = ping_requester.ping();
         if pong == "pong" {
