@@ -31,6 +31,15 @@ pub trait Dispatch: Send + Sync {
     fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8>;
 }
 
+impl<F> Dispatch for F
+where
+    F: Fn(MethodId, &[u8]) -> Vec<u8> + Send + Sync,
+{
+    fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
+        self(method, args)
+    }
+}
+
 pub trait Service: Send + Sync {
     // TODO: add fn get_port(&self) -> Weak<dyn Port>;
 }

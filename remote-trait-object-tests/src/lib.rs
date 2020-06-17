@@ -22,4 +22,6 @@ extern crate codechain_basesandbox as cbasesandbox;
 #[cfg(test)]
 mod connection;
 #[cfg(test)]
+mod test_concurrent_ping;
+#[cfg(test)]
 mod test_ping;
