@@ -48,6 +48,6 @@ where
     }
 }
 
-pub trait Service: Send + Sync {
-    // TODO: add fn get_port(&self) -> Weak<dyn Port>;
-}
+/// All service trait must implement this.
+/// This trait serves as a mere marker trait with two bounds
+pub trait Service: Send + Sync {}
