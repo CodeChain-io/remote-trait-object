@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::{Ipc, IpcRecv, IpcSend, RecvError, Terminate};
+use super::{generate_random_name, Ipc, IpcRecv, IpcSend, RecvError, Terminate};
 use crossbeam::channel::{bounded, Receiver, Select, SelectTimeoutError, Sender};
+use once_cell::sync::OnceCell;
+use parking_lot::Mutex;
+use std::collections::HashMap;
 
 pub struct IntraSend(Sender<Vec<u8>>);
 
@@ -95,6 +98,24 @@ impl Ipc for Intra {
     type SendHalf = IntraSend;
     type RecvHalf = IntraRecv;
 
+    fn arguments_for_both_ends() -> (Vec<u8>, Vec<u8>) {
+        let key_server = generate_random_name();
+        let key_client = generate_random_name();
+
+        let (intra_a, intra_b) = Self::new_both_ends();
+
+        add_ends(key_server.clone(), RegisteredIpcEnds {
+            is_server: true,
+            intra: intra_a,
+        });
+        add_ends(key_client.clone(), RegisteredIpcEnds {
+            is_server: false,
+            intra: intra_b,
+        });
+
+        (serde_cbor::to_vec(&key_server).unwrap(), serde_cbor::to_vec(&key_client).unwrap())
+    }
+
     fn new_both_ends() -> (Self, Self) {
         let (a_sender, a_receiver) = bounded(256);
         let (a_termination_sender, a_termination_receiver) = bounded(1);
@@ -122,7 +143,66 @@ impl Ipc for Intra {
         (a_intra, b_intra)
     }
 
+    fn new(data: Vec<u8>) -> Self {
+        let key: String = serde_cbor::from_slice(&data).unwrap();
+        let RegisteredIpcEnds {
+            is_server,
+            intra,
+        } = take_ends(&key);
+
+        // Handshake
+        let timeout = std::time::Duration::from_millis(1000);
+        if is_server {
+            let x = intra.recv.recv(Some(timeout)).unwrap();
+            assert_eq!(x, b"hey");
+            intra.send.send(b"hello");
+            let x = intra.recv.recv(Some(timeout)).unwrap();
+            assert_eq!(x, b"hi");
+        } else {
+            intra.send.send(b"hey");
+            let x = intra.recv.recv(None).unwrap();
+            assert_eq!(x, b"hello");
+            intra.send.send(b"hi");
+        }
+
+        intra
+    }
+
     fn split(self) -> (Self::SendHalf, Self::RecvHalf) {
         (self.send, self.recv)
+    }
+}
+
+struct RegisteredIpcEnds {
+    is_server: bool,
+    intra: Intra,
+}
+
+static POOL: OnceCell<Mutex<HashMap<String, RegisteredIpcEnds>>> = OnceCell::new();
+fn get_pool_raw() -> &'static Mutex<HashMap<String, RegisteredIpcEnds>> {
+    POOL.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn add_ends(key: String, ends: RegisteredIpcEnds) {
+    assert!(get_pool_raw().lock().insert(key, ends).is_none())
+}
+
+fn take_ends(key: &str) -> RegisteredIpcEnds {
+    get_pool_raw().lock().remove(key).unwrap()
+}
+
+impl IpcSend for Intra {
+    fn send(&self, data: &[u8]) {
+        self.send.send(data)
+    }
+}
+
+impl IpcRecv for Intra {
+    type Terminator = Terminator;
+    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError> {
+        self.recv.recv(timeout)
+    }
+    fn create_terminator(&self) -> Self::Terminator {
+        self.recv.create_terminator()
     }
 }
