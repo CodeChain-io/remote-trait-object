@@ -15,16 +15,40 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod intra;
+use once_cell::sync::OnceCell;
+use parking_lot::Mutex;
 pub use remote_trait_object::ipc::{IpcRecv, IpcSend, RecvError, Terminate};
 
-pub trait Ipc: Sized {
+pub trait Ipc: Sized + IpcSend + IpcRecv {
+    /// Generate two configurations
+    /// which will be feeded to Ipc::new(),
+    /// for both two ends in two different processes, to initialize each IPC end.
+    /// Note that both sides' new() must be called concurrently; they will be completed only if
+    /// both run at the same time.
+    fn arguments_for_both_ends() -> (Vec<u8>, Vec<u8>);
     fn new_both_ends() -> (Self, Self);
 
     type SendHalf: IpcSend;
     type RecvHalf: IpcRecv;
 
+    /// Constructs itself with an opaque data that would have been transported by some IPC
+    fn new(data: Vec<u8>) -> Self;
+
     /// split itself into Send-only and Recv-only. This is helpful for a threading
     /// When you design both halves, you might consider who's in charge of cleaning up things.
     /// Common implementation is making both to have Arc<SomethingDroppable>.
     fn split(self) -> (Self::SendHalf, Self::RecvHalf);
+}
+
+/// Most of IPC depends on a system-wide name, which looks quite vulnerable for
+/// possible attack. Rather, generating a random name would be more secure.
+pub fn generate_random_name() -> String {
+    static MONOTONIC: OnceCell<Mutex<u64>> = OnceCell::new();
+    let mut mono = MONOTONIC.get_or_init(|| Mutex::new(0)).lock();
+    *mono += 1;
+    let mono = *mono;
+    let pid = std::process::id();
+    let time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
+    let hash = ccrypto::blake256(format!("{:?}{}{}", time, pid, mono));
+    format!("{:?}", hash)[0..16].to_string()
 }
