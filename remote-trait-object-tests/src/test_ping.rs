@@ -37,7 +37,7 @@ fn ping_intra() {
 
 #[test]
 fn ping_unix_socket() {
-  test_ping::<DomainSocket>();
+    test_ping::<DomainSocket>();
 }
 
 /// There are thee entities: commander, main module and ping module.
