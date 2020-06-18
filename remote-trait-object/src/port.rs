@@ -50,8 +50,9 @@ impl Port for BasicPort {
         self.client.as_ref().unwrap().call(packet)
     }
 
-    fn delete_request(&self, _id: ServiceObjectId) {
-        unimplemented!()
+    fn delete_request(&self, id: ServiceObjectId) {
+        debug!("Delete requested: {}", id);
+        // TODO: Delete it actually
     }
 
     fn register(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange {
