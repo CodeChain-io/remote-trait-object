@@ -60,11 +60,14 @@ impl Port for BasicPort {
 }
 
 impl BasicPort {
-    pub fn new(client: Client) -> Self {
-        Self {
+    pub fn new(client: Client) -> Arc<Self> {
+        let arc = Arc::new(Self {
             registry: Arc::new(ServiceForwarder::new()),
             client: Some(client),
-        }
+        });
+        let arc2 = arc.clone() as Arc<dyn Port>;
+        arc.registry.set_port(Arc::downgrade(&arc2));
+        arc
     }
 
     pub fn get_registry(&self) -> Arc<ServiceForwarder> {

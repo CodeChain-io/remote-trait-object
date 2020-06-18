@@ -35,7 +35,7 @@ impl Context {
             multiplexed_send,
         } = Multiplexer::multiplex::<R, S, PacketForward>(ipc_send, ipc_recv);
         let client = Client::new(multiplexed_send.clone(), response_recv);
-        let port = Arc::new(BasicPort::new(client));
+        let port = BasicPort::new(client);
         let server = Server::new(port.get_registry(), multiplexed_send, request_recv);
 
         Context {
