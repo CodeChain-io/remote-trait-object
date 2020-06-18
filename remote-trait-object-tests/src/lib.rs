@@ -18,6 +18,7 @@
 #[macro_use]
 extern crate log;
 extern crate codechain_basesandbox as cbasesandbox;
+extern crate remote_trait_object_macro as rto_macro;
 
 #[cfg(test)]
 mod connection;
