@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+pub mod remote;
+
 use crate::forwarder::ServiceObjectId;
 use crate::port::Port;
 use serde::{Deserialize, Serialize};

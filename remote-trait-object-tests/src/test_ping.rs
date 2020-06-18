@@ -68,7 +68,7 @@ fn test_ping<IPC: Ipc + 'static>() {
     to_main.send(&packet.into_vec());
     debug!("Recv pong response");
     let response = from_main.recv(Some(Duration::from_secs(1))).unwrap();
-    let response_packet = PacketView::new(&response);
-    assert_eq!(response_packet.data(), b"pong received");
+    let response: String = serde_cbor::from_slice(PacketView::new(&response).data()).unwrap();
+    assert_eq!(response, "pong received");
     debug!("Test finished");
 }

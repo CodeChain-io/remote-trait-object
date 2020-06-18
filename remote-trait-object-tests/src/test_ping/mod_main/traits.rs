@@ -30,9 +30,7 @@ impl Service for MainRemote {}
 
 impl Main for MainRemote {
     fn start(&self) -> String {
-        let packet = Packet::new_request(self.handle.id, 1, &[]);
-        let response = self.handle.port.upgrade().unwrap().call(packet.view());
-        String::from_utf8(response.data().to_vec()).unwrap()
+        self.handle.call(1, &())
     }
 }
 
@@ -52,7 +50,7 @@ impl Dispatch for MainHandler {
     fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
         trace!("Main received {}({:?}) request", method, args);
         if method == 1 {
-            self.object.start().as_bytes().to_vec()
+            serde_cbor::to_vec(&self.object.start()).unwrap()
         } else {
             panic!("Dispatch failed: {}({:?})", method, args)
         }
