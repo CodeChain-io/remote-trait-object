@@ -3,4 +3,5 @@ members = [
     "basesandbox",
     "remote-trait-object",
     "remote-trait-object-tests",
+    "remote-trait-object-macro",
 ]
