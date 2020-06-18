@@ -14,19 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate quote;
-
-mod helper;
-mod service;
-
-use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 
-#[proc_macro_attribute]
-pub fn service(args: TokenStream, input: TokenStream) -> TokenStream {
-    match service::service(TokenStream2::from(args), TokenStream2::from(input)) {
-        Ok(x) => TokenStream::from(x),
-        Err(x) => TokenStream::from(x),
-    }
+pub fn generate_export_and_import(_source_trait: &syn::ItemTrait) -> Result<TokenStream2, TokenStream2> {
+    Ok(TokenStream2::new())
 }
