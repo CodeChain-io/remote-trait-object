@@ -15,18 +15,19 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::packet::PacketView;
-use crate::port::Handler;
+use crate::port::{null_weak_port, Handler, Port};
 use crate::service::Dispatch;
 use parking_lot::RwLock;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 pub type ServiceObjectId = u32;
 
 pub struct ServiceForwarder {
     service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>>,
     available_ids: RwLock<VecDeque<ServiceObjectId>>,
+    port: RwLock<Weak<dyn Port>>,
 }
 
 impl fmt::Debug for ServiceForwarder {
@@ -46,6 +47,7 @@ impl ServiceForwarder {
                 }
                 queue
             }),
+            port: RwLock::new(null_weak_port()),
         }
     }
 
@@ -60,10 +62,17 @@ impl ServiceForwarder {
         let method = packet.method();
         let data = packet.data();
         let handlers = self.service_objects.read();
+        // TODO: set thread-local port pointer to self.port
         handlers
             .get(&object_id)
             .unwrap_or_else(|| panic!("Fail to find {} from ServiceForwarder", object_id))
             .dispatch_and_call(method, data)
+        // TODO: remove that thread-local port
+    }
+
+    /// Be careful of this circular reference
+    pub fn set_port(&self, port: Weak<dyn Port>) {
+        *self.port.write() = port
     }
 }
 
