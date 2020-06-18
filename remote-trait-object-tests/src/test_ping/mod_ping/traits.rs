@@ -57,3 +57,19 @@ impl Dispatch for PingHandler {
         }
     }
 }
+
+impl ExportService<dyn Ping> for dyn Ping {
+    fn export(port: Weak<dyn Port>, object: Arc<dyn Ping>) -> HandleToExchange {
+        port.upgrade().unwrap().register(Arc::new(PingHandler {
+            object,
+        }))
+    }
+}
+
+impl ImportService<dyn Ping> for dyn Ping {
+    fn import(port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<dyn Ping> {
+        Arc::new(PingRemote {
+            handle: Handle::careful_new(handle, port),
+        })
+    }
+}

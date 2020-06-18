@@ -19,7 +19,7 @@ pub mod remote;
 use crate::forwarder::ServiceObjectId;
 use crate::port::Port;
 use serde::{Deserialize, Serialize};
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 pub type MethodId = u32;
 
@@ -35,6 +35,16 @@ pub struct Handle {
     pub port: Weak<dyn Port>,
 }
 
+impl Handle {
+    /// You should not call this! This is for the macro.
+    pub fn careful_new(imported_id: HandleToExchange, port: Weak<dyn Port>) -> Self {
+        Handle {
+            id: imported_id.0,
+            port,
+        }
+    }
+}
+
 /// Exporter sides's interface to the service object. This will be implemented
 /// by each service trait's unique wrapper in the macro
 pub trait Dispatch: Send + Sync {
@@ -48,6 +58,31 @@ where
     fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
         self(method, args)
     }
+}
+
+/// These two traits are associated with some specific service trait.
+/// These tratis will be implement by `dyn ServiceTrait` where `T = dyn ServiceTrait` as well.
+/// Macro will implement this trait with the target(expanding) service trait.
+pub trait ImportService<T: ?Sized + Service> {
+    fn import(port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<T>;
+}
+
+pub trait ExportService<T: ?Sized + Service> {
+    fn export(port: Weak<dyn Port>, object: Arc<T>) -> HandleToExchange;
+}
+
+#[macro_export]
+macro_rules! service_export {
+    ($service_trait: path, $port: expr, $arg: expr) => {{
+        <dyn $service_trait as remote_trait_object::ExportService<dyn $service_trait>>::export($port, $arg)
+    }};
+}
+
+#[macro_export]
+macro_rules! service_import {
+    ($service_trait: path, $port: expr, $arg: expr) => {
+        <dyn $service_trait as remote_trait_object::ImportService<dyn $service_trait>>::import($port, $arg)
+    };
 }
 
 /// All service trait must implement this.

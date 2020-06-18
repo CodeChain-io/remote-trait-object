@@ -57,3 +57,19 @@ impl Dispatch for MainHandler {
         }
     }
 }
+
+impl ExportService<dyn Main> for dyn Main {
+    fn export(port: Weak<dyn Port>, object: Arc<dyn Main>) -> HandleToExchange {
+        port.upgrade().unwrap().register(Arc::new(MainHandler {
+            object,
+        }))
+    }
+}
+
+impl ImportService<dyn Main> for dyn Main {
+    fn import(port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<dyn Main> {
+        Arc::new(MainRemote {
+            handle: Handle::careful_new(handle, port),
+        })
+    }
+}
