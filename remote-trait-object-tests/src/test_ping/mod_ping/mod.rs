@@ -36,7 +36,7 @@ where
     let main_rto = Context::new(to_main, from_main);
     // TODO: use this
     let _handle_to_export =
-        main_rto.get_port().upgrade().unwrap().register(Arc::new(PingHandler::new(Box::new(SimplePong {}))));
+        main_rto.get_port().upgrade().unwrap().register(Arc::new(PingHandler::new(Arc::new(SimplePong {}))));
 
     PingModule {
         _main_rto: main_rto,

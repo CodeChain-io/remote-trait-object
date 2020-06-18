@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use remote_trait_object::*;
+use std::sync::{Arc, Weak};
 
 pub trait Main: Service {
     fn start(&self) -> String;
@@ -35,11 +36,11 @@ impl Main for MainRemote {
 }
 
 pub struct MainHandler {
-    object: Box<dyn Main>,
+    object: Arc<dyn Main>,
 }
 
 impl MainHandler {
-    pub fn new(object: Box<dyn Main>) -> Self {
+    pub fn new(object: Arc<dyn Main>) -> Self {
         Self {
             object,
         }
