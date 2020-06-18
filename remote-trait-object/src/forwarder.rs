@@ -62,12 +62,13 @@ impl ServiceForwarder {
         let method = packet.method();
         let data = packet.data();
         let handlers = self.service_objects.read();
-        // TODO: set thread-local port pointer to self.port
-        handlers
+        crate::service::serde_support::port_thread_local::set_port(self.port.read().clone());
+        let result = handlers
             .get(&object_id)
             .unwrap_or_else(|| panic!("Fail to find {} from ServiceForwarder", object_id))
-            .dispatch_and_call(method, data)
-        // TODO: remove that thread-local port
+            .dispatch_and_call(method, data);
+        crate::service::serde_support::port_thread_local::remove_port();
+        result
     }
 
     /// Be careful of this circular reference
