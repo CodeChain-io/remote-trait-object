@@ -17,6 +17,7 @@
 use remote_trait_object::*;
 use std::sync::{Arc, Weak};
 
+#[rto_macro::service]
 pub trait Ping: Service {
     fn ping(&self) -> String;
 }
