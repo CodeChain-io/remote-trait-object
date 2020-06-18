@@ -54,7 +54,7 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
             .get_port()
             .upgrade()
             .unwrap()
-            .register(Arc::new(MainHandler::new(Box::new(SimpleMain::new(Arc::clone(&ctx))))));
+            .register(Arc::new(MainHandler::new(Arc::new(SimpleMain::new(Arc::clone(&ctx))))));
         cmd_rto
     };
 

@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use remote_trait_object::*;
+use std::sync::{Arc, Weak};
 
 pub trait Ping: Service {
     fn ping(&self) -> String;
@@ -35,11 +36,11 @@ impl Ping for PingRemote {
 }
 
 pub struct PingHandler {
-    object: Box<dyn Ping>,
+    object: Arc<dyn Ping>,
 }
 
 impl PingHandler {
-    pub fn new(object: Box<dyn Ping>) -> Self {
+    pub fn new(object: Arc<dyn Ping>) -> Self {
         Self {
             object,
         }
