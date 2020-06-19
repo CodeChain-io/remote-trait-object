@@ -23,6 +23,12 @@ mod service;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 
+/// Those necessary components for the macro is specially exported in the remote-trait-object.
+/// The macro will always specify full path using this.
+fn create_env_path() -> syn::Path {
+    syn::parse2(quote! {remote_trait_object::macro_env}).unwrap()
+}
+
 #[proc_macro_attribute]
 pub fn service(args: TokenStream, input: TokenStream) -> TokenStream {
     match service::service(TokenStream2::from(args), TokenStream2::from(input)) {
