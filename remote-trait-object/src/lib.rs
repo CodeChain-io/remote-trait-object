@@ -34,3 +34,8 @@ pub use service::id::setup_identifiers;
 pub use service::{
     serde_support::SArc, Dispatch, ExportService, Handle, HandleToExchange, ImportService, MethodId, Service,
 };
+
+pub mod macro_env {
+    pub use super::*;
+    pub use service::id::{IdMap, MethodIdAtomic, ID_ORDERING, MID_REG};
+}
