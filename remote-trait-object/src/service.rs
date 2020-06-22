@@ -75,14 +75,14 @@ pub trait ExportService<T: ?Sized + Service> {
 }
 
 #[macro_export]
-macro_rules! service_export {
+macro_rules! export_service {
     ($service_trait: path, $port: expr, $service_object: expr) => {{
         <dyn $service_trait as remote_trait_object::ExportService<dyn $service_trait>>::export($port, $service_object)
     }};
 }
 
 #[macro_export]
-macro_rules! service_import {
+macro_rules! import_service {
     ($service_trait: path, $port: expr, $handle: expr) => {
         <dyn $service_trait as remote_trait_object::ImportService<dyn $service_trait>>::import($port, $handle)
     };
