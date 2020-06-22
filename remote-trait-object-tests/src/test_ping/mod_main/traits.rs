@@ -49,9 +49,7 @@ impl Dispatch for MainHandler {
 
 impl ExportService<dyn Main> for dyn Main {
     fn export(port: Weak<dyn Port>, object: Arc<dyn Main>) -> HandleToExchange {
-        port.upgrade().unwrap().register(Arc::new(MainHandler {
-            object,
-        }))
+        port.upgrade().unwrap().register(Arc::new(MainDispatcher::new(object)))
     }
 }
 

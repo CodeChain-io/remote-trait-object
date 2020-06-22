@@ -24,7 +24,7 @@ use context::Context;
 use impls::SimpleMain;
 use remote_trait_object::Context as RtoContext;
 use std::sync::Arc;
-use traits::MainHandler;
+use traits::MainDispatcher;
 
 pub fn main_like<IPC: Ipc>(
     _args: Vec<String>,
@@ -54,7 +54,8 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
             .get_port()
             .upgrade()
             .unwrap()
-            .register(Arc::new(MainHandler::new(Arc::new(SimpleMain::new(Arc::clone(&ctx))))));
+            // TODO: you shouldn't manually register dispatcher. Use export macro.
+            .register(Arc::new(MainDispatcher::new(Arc::new(SimpleMain::new(Arc::clone(&ctx))))));
         cmd_rto
     };
 
