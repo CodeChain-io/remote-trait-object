@@ -32,6 +32,7 @@ pub type MethodId = u32;
 pub struct HandleToExchange(pub(crate) ServiceObjectId);
 
 /// Remote service will carry this.
+#[derive(Debug)]
 pub struct Handle {
     pub id: ServiceObjectId,
     pub port: Weak<dyn Port>,

@@ -26,7 +26,7 @@ use crate::service::*;
 use client::Client;
 use std::sync::{Arc, Weak};
 
-pub trait Port: Send + Sync + 'static {
+pub trait Port: std::fmt::Debug + Send + Sync + 'static {
     fn call(&self, packet: PacketView) -> Packet;
     fn delete_request(&self, id: ServiceObjectId);
     fn register(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange;
