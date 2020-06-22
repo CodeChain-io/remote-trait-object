@@ -45,6 +45,30 @@ pub struct IdMap {
 /// This is supposed to be called only once during the entire lifetime of the process.
 /// However it is ok to call multiple times if the IdMap is identical, especially in the
 /// tests where each test share that static id list
+/// # Examples
+/// ```
+/// use remote_trait_object::macro_env::*;
+/// #[allow(non_upper_case_globals)]
+/// static ID_METHOD_MyTrait_mymethod: MethodIdAtomic = MethodIdAtomic::new(1);
+/// #[linkme::distributed_slice(MID_REG)]
+/// #[allow(non_upper_case_globals)]
+/// static ID_METHOD_ENTRY_MyTrait_mymethod: (&'static str, &'static str, fn(id: MethodId)) =
+///     ("MyTrait", "mymethod", id_method_setter_MyTrait_mymethod);
+/// #[allow(non_snake_case)]
+/// fn id_method_setter_MyTrait_mymethod(id: MethodId) {
+///     ID_METHOD_MyTrait_mymethod.store(id, ID_ORDERING);
+/// }
+/// #[test]
+/// fn setup() {
+///     let id_map: HashMap<(String, String), MethodId> =
+///         [(("MyTrait".to_owned(), "mymethod".to_owned()), 123)].iter().cloned().collect();
+///     let id_map = IdMap {
+///         method_map: Some(id_map),
+///     };
+///     setup_identifiers(&id_map);
+///     assert_eq!(ID_METHOD_MyTrait_mymethod.load(ID_ORDERING), 123);
+/// }
+/// ```
 pub fn setup_identifiers(descriptor: &IdMap) {
     // distributed_slices integrity test
     {
@@ -67,31 +91,5 @@ pub fn setup_identifiers(descriptor: &IdMap) {
                 *map.get(&((*trait_name).to_owned(), (*method_name).to_owned())).expect("Invalid handle descriptor"),
             );
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[allow(non_upper_case_globals)]
-    static ID_METHOD_MyTrait_mymethod: crate::macro_env::MethodIdAtomic = crate::macro_env::MethodIdAtomic::new(1);
-    #[linkme::distributed_slice(crate::macro_env::MID_REG)]
-    #[allow(non_upper_case_globals)]
-    static ID_METHOD_ENTRY_MyTrait_mymethod: (&'static str, &'static str, fn(id: crate::macro_env::MethodId)) =
-        ("MyTrait", "mymethod", id_method_setter_MyTrait_mymethod);
-    #[allow(non_snake_case)]
-    fn id_method_setter_MyTrait_mymethod(id: crate::macro_env::MethodId) {
-        ID_METHOD_MyTrait_mymethod.store(id, crate::macro_env::ID_ORDERING);
-    }
-    #[test]
-    fn setup() {
-        let id_map: HashMap<(String, String), MethodId> =
-            [(("MyTrait".to_owned(), "mymethod".to_owned()), 123)].iter().cloned().collect();
-        let id_map = IdMap {
-            method_map: Some(id_map),
-        };
-        setup_identifiers(&id_map);
-        assert_eq!(ID_METHOD_MyTrait_mymethod.load(crate::macro_env::ID_ORDERING), 123);
     }
 }
