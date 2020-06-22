@@ -51,7 +51,7 @@ impl MainHandler {
 impl Dispatch for MainHandler {
     fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
         trace!("Main received {}({:?}) request", method, args);
-        if method == 1 {
+        if method == 70 {
             serde_cbor::to_vec(&self.object.start()).unwrap()
         } else {
             panic!("Dispatch failed: {}({:?})", method, args)

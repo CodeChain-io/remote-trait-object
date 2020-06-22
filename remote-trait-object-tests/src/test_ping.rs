@@ -64,7 +64,7 @@ fn test_ping<IPC: Ipc + 'static>() {
 
     debug!("Send start cmd");
     // FIXME: 0 is temporary value assuming singleton service object
-    let packet = Packet::new_request(0, 1, &[]);
+    let packet = Packet::new_request(0, 70, &[]);
     to_main.send(&packet.into_vec());
     debug!("Recv pong response");
     let response = from_main.recv(Some(Duration::from_secs(1))).unwrap();
