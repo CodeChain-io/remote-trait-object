@@ -36,3 +36,12 @@ pub fn service(args: TokenStream, input: TokenStream) -> TokenStream {
         Err(x) => TokenStream::from(x),
     }
 }
+
+#[proc_macro_attribute]
+pub fn service_debug(args: TokenStream, input: TokenStream) -> TokenStream {
+    match service::service(TokenStream2::from(args), TokenStream2::from(input)) {
+        Ok(x) => println!("{}", x),
+        Err(x) => println!("{}", x),
+    }
+    TokenStream::new()
+}
