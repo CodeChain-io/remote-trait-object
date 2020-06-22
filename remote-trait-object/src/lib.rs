@@ -26,6 +26,8 @@ mod packet;
 mod port;
 mod queue;
 mod service;
+#[cfg(test)]
+mod tests;
 
 pub use context::Context;
 pub use packet::{Packet, PacketView, SlotId};
