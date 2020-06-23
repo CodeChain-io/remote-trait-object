@@ -27,8 +27,7 @@ pub fn generate_remote(source_trait: &syn::ItemTrait) -> Result<TokenStream2, To
     let mut imported_struct = quote! {
         #[derive(Debug)]
         pub struct #struct_ident {
-            // FIXME: make this private
-            pub handle: #env_path::Handle
+            handle: #env_path::Handle
         }
     };
     let mut imported_struct_impl = syn::parse2::<syn::ItemImpl>(quote! {

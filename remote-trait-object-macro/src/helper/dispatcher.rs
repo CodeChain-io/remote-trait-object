@@ -138,7 +138,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
             object: std::sync::Arc<dyn #trait_ident>
         }
         impl #struct_ident {
-            pub fn new(object: std::sync::Arc<dyn #trait_ident>) -> Self {
+            fn new(object: std::sync::Arc<dyn #trait_ident>) -> Self {
                 Self {
                     object
                 }
