@@ -235,24 +235,4 @@ mod ping {
     }
 
     impl Service for PingImpl {}
-
-    mod generated {
-        use super::{Ping, PingDispatcher, PingRemote};
-        use remote_trait_object::{ExportService, Handle, HandleToExchange, ImportService, Port};
-        use std::sync::{Arc, Weak};
-
-        impl ExportService<dyn Ping> for dyn Ping {
-            fn export(port: Weak<dyn Port>, service_object: Arc<dyn Ping>) -> HandleToExchange {
-                port.upgrade().unwrap().register(Arc::new(PingDispatcher::new(service_object)))
-            }
-        }
-
-        impl ImportService<dyn Ping> for dyn Ping {
-            fn import(port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<dyn Ping> {
-                Arc::new(PingRemote {
-                    handle: Handle::careful_new(handle, port),
-                })
-            }
-        }
-    }
 }
