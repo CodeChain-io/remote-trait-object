@@ -145,7 +145,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
             }
         }
         impl #env_path::Dispatch for #struct_ident {
-            fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
+            fn dispatch_and_call(&self, method: #env_path::MethodId, args: &[u8]) -> Vec<u8> {
                 #if_else_clauses
             }
         }
