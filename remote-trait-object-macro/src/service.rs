@@ -37,13 +37,11 @@ pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, 
     let id = helper::id::generate_id(&source_trait)?;
     let dispatcher = helper::dispatcher::generate_dispatcher(&source_trait)?;
     let remote = helper::remote::generate_remote(&source_trait)?;
-    let export_and_import = helper::export_import::generate_export_and_import(&source_trait)?;
 
     Ok(quote! {
         #source_trait
         #id
         #dispatcher
         #remote
-        #export_and_import
     })
 }
