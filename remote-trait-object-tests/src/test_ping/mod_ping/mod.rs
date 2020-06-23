@@ -20,10 +20,9 @@ mod traits;
 use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use impls::SimplePong;
-use remote_trait_object::Context;
+use remote_trait_object::{export_service, Context};
 use std::sync::Arc;
-use traits::PingDispatcher;
-pub use traits::{Ping, PingRemote};
+pub use traits::Ping;
 
 pub fn main_like<IPC>(_args: Vec<String>, with_main: ConnectionEnd<IPC>) -> PingModule
 where
@@ -35,10 +34,7 @@ where
 
     let main_rto = Context::new(to_main, from_main);
     // TODO: use this
-    let _handle_to_export = main_rto.get_port().upgrade().unwrap()
-        // TODO: you shouldn't manually register dispatcher. Use export macro.
-        .register(Arc::new(PingDispatcher::new(Arc::new(SimplePong {}))));
-
+    let _handle_to_export = export_service!(Ping, main_rto, Arc::new(SimplePong {}));
     PingModule {
         _main_rto: main_rto,
     }

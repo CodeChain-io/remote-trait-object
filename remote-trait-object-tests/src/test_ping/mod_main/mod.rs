@@ -22,9 +22,10 @@ use crate::connection::ConnectionEnd;
 use cbasesandbox::ipc::Ipc;
 use context::Context;
 use impls::SimpleMain;
+use remote_trait_object::export_service;
 use remote_trait_object::Context as RtoContext;
 use std::sync::Arc;
-use traits::MainDispatcher;
+use traits::Main;
 
 pub fn main_like<IPC: Ipc>(
     _args: Vec<String>,
@@ -50,12 +51,7 @@ fn start_server<IPC: Ipc>(with_cmd: ConnectionEnd<IPC>, with_ping: ConnectionEnd
         } = with_cmd;
         let cmd_rto = RtoContext::new(to_cmd, from_cmd);
         // TODO: use this
-        let _handle_to_export = cmd_rto
-            .get_port()
-            .upgrade()
-            .unwrap()
-            // TODO: you shouldn't manually register dispatcher. Use export macro.
-            .register(Arc::new(MainDispatcher::new(Arc::new(SimpleMain::new(Arc::clone(&ctx))))));
+        let _handle_to_export = export_service!(Main, cmd_rto, Arc::new(SimpleMain::new(Arc::clone(&ctx))));
         cmd_rto
     };
 

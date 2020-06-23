@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::mod_ping::{Ping, PingRemote};
+use super::super::mod_ping::Ping;
 use super::context::Context;
 use super::traits::Main;
-use remote_trait_object::{Handle, Service};
+use remote_trait_object::{import_service, HandleToExchange, Service};
 use std::sync::Arc;
 
 pub struct SimpleMain {
@@ -34,13 +34,8 @@ impl SimpleMain {
 
 impl Main for SimpleMain {
     fn start(&self) -> String {
-        // FIXME: Remote struct can be made only by import
-        let ping_requester = PingRemote {
-            handle: Handle {
-                port: self.ctx.ping_rto().get_port(),
-                id: 0,
-            },
-        };
+        let singleton_handle = HandleToExchange::new_singleton();
+        let ping_requester = import_service!(Ping, self.ctx.ping_rto(), singleton_handle);
         let pong = ping_requester.ping();
         if pong == "pong" {
             "pong received".to_string()
