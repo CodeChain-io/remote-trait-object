@@ -89,3 +89,117 @@ impl<'de, T: ?Sized + Service + ImportService<T>> Deserialize<'de> for SArc<T> {
         Ok(SArc::new(T::import(port_thread_local::get_port(), handle)))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    mod mock {
+        use super::super::port_thread_local;
+        use crate::port::null_weak_port;
+
+        pub fn set_global_port() {
+            port_thread_local::set_port(null_weak_port());
+        }
+    }
+
+    mod serialize_test {
+        use super::super::SArc;
+        use super::mock;
+        use crate::{ExportService, HandleToExchange, Port, Service};
+        use std::sync::{Arc, Weak};
+
+        trait Foo: Service {
+            fn get_handle_to_exchange(&self) -> HandleToExchange;
+        }
+
+        struct FooImpl {
+            pub handle_to_exchange: HandleToExchange,
+        }
+        impl FooImpl {
+            pub fn new(handle: u32) -> Self {
+                Self {
+                    handle_to_exchange: HandleToExchange(handle),
+                }
+            }
+        }
+        impl Foo for FooImpl {
+            fn get_handle_to_exchange(&self) -> HandleToExchange {
+                self.handle_to_exchange
+            }
+        }
+        impl Service for FooImpl {}
+
+        impl ExportService<dyn Foo> for dyn Foo {
+            fn export(_port: Weak<dyn Port>, object: Arc<dyn Foo>) -> HandleToExchange {
+                object.get_handle_to_exchange()
+            }
+        }
+
+        /// This test checks SArc<dyn Test> is serialized as HandleToExchange or not
+        #[test]
+        fn test_serialize() {
+            mock::set_global_port();
+
+            {
+                let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl::new(3));
+                let foo_sarc = SArc::new(foo_arc.clone());
+                let bytes = serde_cbor::to_vec(&foo_sarc).unwrap();
+                let handle_to_exchange: HandleToExchange = serde_cbor::from_slice(&bytes).unwrap();
+                assert_eq!(handle_to_exchange.0, 3);
+            }
+
+            {
+                let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl::new(23));
+                let foo_sarc = SArc::new(foo_arc.clone());
+                let bytes = serde_cbor::to_vec(&foo_sarc).unwrap();
+                let handle_to_exchange: HandleToExchange = serde_cbor::from_slice(&bytes).unwrap();
+                assert_eq!(handle_to_exchange.0, 23);
+            }
+        }
+    }
+
+    mod deserialize_test {
+        use super::super::SArc;
+        use super::mock;
+        use crate::{HandleToExchange, ImportService, Port, Service};
+        use std::sync::{Arc, Weak};
+
+        trait Foo: Service {
+            fn get_handle_to_exchange(&self) -> HandleToExchange;
+        }
+        struct FooImpl {
+            handle_to_exchange: HandleToExchange,
+        }
+        impl Foo for FooImpl {
+            fn get_handle_to_exchange(&self) -> HandleToExchange {
+                self.handle_to_exchange
+            }
+        }
+        impl Service for FooImpl {}
+        impl ImportService<dyn Foo> for dyn Foo {
+            fn import(_port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<dyn Foo> {
+                Arc::new(FooImpl {
+                    handle_to_exchange: handle,
+                })
+            }
+        }
+
+        #[test]
+        fn test_deserialize() {
+            mock::set_global_port();
+
+            {
+                let handle_to_exchange = HandleToExchange(32);
+                let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
+                let dyn_foo: SArc<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
+                assert_eq!(dyn_foo.unwrap().get_handle_to_exchange().0, 32);
+            }
+
+            {
+                let handle_to_exchange = HandleToExchange(2);
+                let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
+                let dyn_foo: SArc<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
+                assert_eq!(dyn_foo.unwrap().get_handle_to_exchange().0, 2);
+            }
+        }
+    }
+}
