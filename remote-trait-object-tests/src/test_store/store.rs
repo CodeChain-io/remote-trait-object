@@ -1,5 +1,5 @@
 use super::types::*;
-use cbasesandbox::ipc::Ipc;
+use crate::ipc::{IntraRecv, IntraSend};
 use crossbeam::channel::{Receiver, Sender};
 use remote_trait_object::*;
 use std::sync::Arc;
@@ -54,8 +54,8 @@ impl Store for MyPizzaStore {
 
 impl Service for MyPizzaStore {}
 
-pub fn run_store(ipc_arg: Vec<u8>, export_channel: Sender<Vec<u8>>, end_signal: Receiver<()>) {
-    let (ipc_send, ipc_recv) = cbasesandbox::ipc::intra::Intra::new(ipc_arg).split();
+pub fn run_store(ipc: (IntraSend, IntraRecv), export_channel: Sender<Vec<u8>>, end_signal: Receiver<()>) {
+    let (ipc_send, ipc_recv) = ipc;
     let rto_context = Context::new(ipc_send, ipc_recv);
     let store = Arc::new(MyPizzaStore {
         vat: 1,

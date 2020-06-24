@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::connection::{create_connection, ConnectionEnd};
-use cbasesandbox::ipc::intra::Intra;
+use crate::ipc::{IntraRecv, IntraSend, IpcEnds};
 use remote_trait_object::Context;
 use remote_trait_object::Packet;
 use std::sync::mpsc;
@@ -38,7 +37,12 @@ fn ping() {
 
     panic_after(std::time::Duration::from_secs(1), || {
         debug!("ping test start");
-        let (cmd_to_ping, ping_to_cmd) = create_connection::<Intra>();
+        let IpcEnds {
+            send1,
+            recv1,
+            send2,
+            recv2,
+        } = crate::ipc::create();
 
         let number_of_calls = 4;
         let wait_before_test_end = 1;
@@ -47,14 +51,9 @@ fn ping() {
         // This test blocks if the packets are not handled concurrently.
         let barrier = Arc::new(Barrier::new(number_of_calls + wait_before_test_end));
 
-        let _ping_module = create_ping_module(ping_to_cmd, Arc::clone(&barrier));
+        let _ping_module = create_ping_module(send2, recv2, Arc::clone(&barrier));
 
-        let ConnectionEnd {
-            sender: to_ping,
-            receiver: from_ping,
-        } = cmd_to_ping;
-
-        let cmd_to_ping_rto = Context::new(to_ping, from_ping);
+        let cmd_to_ping_rto = Context::new(send1, recv1);
         let mut handles = Vec::new();
 
         for i in 0..number_of_calls {
@@ -80,13 +79,8 @@ fn ping() {
     });
 }
 
-fn create_ping_module(connection: ConnectionEnd<Intra>, barrier: Arc<Barrier>) -> Context {
-    let ConnectionEnd {
-        sender: to_cmd,
-        receiver: from_cmd,
-    } = connection;
-
-    let cmd_rto = Context::new(to_cmd, from_cmd);
+fn create_ping_module(ipc_send: IntraSend, ipc_recv: IntraRecv, barrier: Arc<Barrier>) -> Context {
+    let cmd_rto = Context::new(ipc_send, ipc_recv);
     let port = cmd_rto.get_port().upgrade().unwrap();
     let _handle_to_export = port.register(Arc::new(move |_method: u32, _args: &[u8]| {
         // Wait until barrier.wait is called in concurrently

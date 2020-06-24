@@ -1,6 +1,5 @@
 use super::store::run_store;
 use super::types::*;
-use cbasesandbox::ipc::Ipc;
 use crossbeam::channel::bounded;
 use remote_trait_object::*;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -24,17 +23,22 @@ impl CreditCard for MyCreditCard {
 impl Service for MyCreditCard {}
 
 fn test_runner(f: impl Fn(Arc<dyn Store>)) {
-    let (ipc_arg1, ipc_arg2) = cbasesandbox::ipc::intra::Intra::arguments_for_both_ends();
+    let crate::ipc::IpcEnds {
+        recv1,
+        send1,
+        recv2,
+        send2,
+    } = crate::ipc::create();
+
     let (export_send, export_recv) = bounded(100);
     let (signal_send, signal_recv) = bounded(0);
 
     let store_runner = std::thread::Builder::new()
         .name("Store Runner".to_owned())
-        .spawn(move || run_store(ipc_arg2, export_send, signal_recv))
+        .spawn(move || run_store((send2, recv2), export_send, signal_recv))
         .unwrap();
-    let (ipc_send, ipc_recv) = cbasesandbox::ipc::intra::Intra::new(ipc_arg1).split();
 
-    let rto_context = Context::new(ipc_send, ipc_recv);
+    let rto_context = Context::new(send1, recv1);
     let store_handle: HandleToExchange = serde_cbor::from_slice(&export_recv.recv().unwrap()).unwrap();
     let store = import_service!(Store, rto_context, store_handle);
 
