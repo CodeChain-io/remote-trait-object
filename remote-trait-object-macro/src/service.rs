@@ -17,11 +17,6 @@
 use crate::helper;
 use proc_macro2::TokenStream as TokenStream2;
 
-// TODOs - currently just a identity function
-// 1. Implement ID registeration
-// 2. Implement dispatcher
-// 3. Implement remote
-// 4. Implement export / import
 pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, TokenStream2> {
     if !args.is_empty() {
         return Err(syn::Error::new_spanned(input, "#[service] doesn't take any argument").to_compile_error())
