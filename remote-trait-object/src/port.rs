@@ -20,11 +20,14 @@ pub mod types;
 
 pub use self::types::Handler;
 use crate::forwarder::ServiceForwarder;
-use crate::forwarder::ServiceObjectId;
+use crate::forwarder::{ServiceObjectId, DELETE_REQUEST};
 use crate::packet::{Packet, PacketView};
 use crate::service::*;
 use client::Client;
-use std::sync::{Arc, Weak};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Weak,
+};
 
 pub trait Port: std::fmt::Debug + Send + Sync + 'static {
     fn call(&self, packet: PacketView) -> Packet;
@@ -43,6 +46,10 @@ pub struct BasicPort {
     registry: Arc<ServiceForwarder>,
     /// client is None only in the drop function.
     client: Option<Client>,
+    /// If this is on, the port will not request delete
+    /// This is useful when the port-port connection is terminating and you don't really
+    /// care about the garabage collection.
+    no_drop: AtomicBool,
 }
 
 impl Port for BasicPort {
@@ -51,8 +58,11 @@ impl Port for BasicPort {
     }
 
     fn delete_request(&self, id: ServiceObjectId) {
-        debug!("Delete requested: {}", id);
-        // TODO: Delete it actually
+        if self.no_drop.load(Ordering::SeqCst) {
+            return
+        }
+        let packet = Packet::new_request(id, DELETE_REQUEST, &[]);
+        assert_eq!(self.client.as_ref().unwrap().call(packet.view()).data(), []);
     }
 
     fn register(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange {
@@ -65,6 +75,7 @@ impl BasicPort {
         let arc = Arc::new(Self {
             registry: Arc::new(ServiceForwarder::new()),
             client: Some(client),
+            no_drop: AtomicBool::new(false),
         });
         let arc2 = arc.clone() as Arc<dyn Port>;
         arc.registry.set_port(Arc::downgrade(&arc2));
@@ -78,6 +89,10 @@ impl BasicPort {
     /// Please call shutdown after Multiplexer::shutdown
     pub fn shutdown(mut self) {
         self.client.take().unwrap().shutdown();
+    }
+
+    pub fn set_no_drop(&self) {
+        self.no_drop.store(true, Ordering::SeqCst);
     }
 }
 
