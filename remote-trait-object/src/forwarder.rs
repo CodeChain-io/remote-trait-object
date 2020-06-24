@@ -23,6 +23,7 @@ use std::fmt;
 use std::sync::{Arc, Weak};
 
 pub type ServiceObjectId = u32;
+pub const DELETE_REQUEST: crate::service::MethodId = std::u32::MAX;
 
 pub struct ServiceForwarder {
     service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>>,
@@ -61,14 +62,25 @@ impl ServiceForwarder {
         let object_id = packet.object_id();
         let method = packet.method();
         let data = packet.data();
-        let handlers = self.service_objects.read();
-        crate::service::serde_support::port_thread_local::set_port(self.port.read().clone());
-        let result = handlers
-            .get(&object_id)
-            .unwrap_or_else(|| panic!("Fail to find {} from ServiceForwarder", object_id))
-            .dispatch_and_call(method, data);
-        crate::service::serde_support::port_thread_local::remove_port();
-        result
+
+        if method == DELETE_REQUEST {
+            self.delete(object_id);
+            Vec::new()
+        } else {
+            let handlers = self.service_objects.read();
+            crate::service::serde_support::port_thread_local::set_port(self.port.read().clone());
+            let result = handlers
+                .get(&object_id)
+                .unwrap_or_else(|| panic!("Fail to find {} from ServiceForwarder", object_id))
+                .dispatch_and_call(method, data);
+            crate::service::serde_support::port_thread_local::remove_port();
+            result
+        }
+    }
+
+    fn delete(&self, id: ServiceObjectId) {
+        self.service_objects.write().remove(&id).unwrap();
+        self.available_ids.write().push_back(id);
     }
 
     /// Be careful of this circular reference

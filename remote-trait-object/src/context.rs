@@ -48,6 +48,10 @@ impl Context {
     pub fn get_port(&self) -> Weak<dyn Port> {
         Arc::downgrade(&self.port.clone().unwrap()) as Weak<dyn Port>
     }
+
+    pub fn disable_garbage_collection(&self) {
+        self.port.as_ref().unwrap().set_no_drop();
+    }
 }
 
 impl Drop for Context {

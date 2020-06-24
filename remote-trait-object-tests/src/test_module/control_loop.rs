@@ -61,7 +61,9 @@ pub fn module_control_loop<IPC: Ipc, Module: Bootstrap>(args: Vec<String>) {
         }
         send(&ctx, &"done".to_string());
     }
-
+    for rto_context in rto_contexts.values() {
+        rto_context.disable_garbage_collection();
+    }
     ctx.terminate();
 }
 
