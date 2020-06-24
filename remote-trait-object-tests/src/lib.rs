@@ -14,17 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[cfg(test)]
 #[macro_use]
 extern crate log;
-extern crate codechain_basesandbox as cbasesandbox;
 extern crate remote_trait_object_macro as rto_macro;
 
 #[cfg(test)]
-mod connection;
-#[cfg(test)]
 mod test_concurrent_ping;
-#[cfg(test)]
-mod test_module;
+//#[cfg(test)]
+//mod test_module;
+pub mod ipc;
 #[cfg(test)]
 mod test_store;
