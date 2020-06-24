@@ -27,6 +27,4 @@ mod test_concurrent_ping;
 #[cfg(test)]
 mod test_module;
 #[cfg(test)]
-mod test_ping;
-#[cfg(test)]
 mod test_store;
