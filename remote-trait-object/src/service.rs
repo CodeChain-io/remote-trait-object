@@ -81,20 +81,18 @@ pub trait ExportService<T: ?Sized + Service> {
     fn export(port: Weak<dyn Port>, object: Arc<T>) -> HandleToExchange;
 }
 
-#[macro_export]
-macro_rules! export_service {
-    ($service_trait: path, $context: expr, $service_object: expr) => {{
-        let port = $context.get_port();
-        <dyn $service_trait as remote_trait_object::ExportService<dyn $service_trait>>::export(port, $service_object)
-    }};
+pub fn export_service<T: ?Sized + Service + ExportService<T>>(
+    context: &crate::context::Context,
+    service: Arc<T>,
+) -> HandleToExchange {
+    <T as ExportService<T>>::export(context.get_port(), service)
 }
 
-#[macro_export]
-macro_rules! import_service {
-    ($service_trait: path, $context: expr, $handle: expr) => {{
-        let port = $context.get_port();
-        <dyn $service_trait as remote_trait_object::ImportService<dyn $service_trait>>::import(port, $handle)
-    }};
+pub fn import_service<T: ?Sized + Service + ImportService<T>>(
+    context: &crate::context::Context,
+    handle: HandleToExchange,
+) -> Arc<T> {
+    <T as ImportService<T>>::import(context.get_port(), handle)
 }
 
 /// All service trait must implement this.
