@@ -21,11 +21,56 @@ use crate::forwarder::ServiceObjectId;
 use crate::packet::{Packet, PacketView};
 use crate::port::*;
 use crate::service::*;
-use parking_lot::RwLock;
+use parking_lot::Mutex;
+use std::collections::HashMap;
 use std::sync::Arc;
 
-struct TestPort {
-    target: RwLock<Option<Arc<dyn Dispatch>>>,
+struct TestDispatchMap {
+    last_id: u32,
+    map: HashMap<u32, Arc<dyn Dispatch>>,
+}
+
+impl TestDispatchMap {
+    pub fn new() -> Self {
+        Self {
+            last_id: 0,
+            map: HashMap::new(),
+        }
+    }
+
+    fn insert(&mut self, service_object: Arc<dyn Dispatch>) -> u32 {
+        self.last_id += 1;
+        self.map.insert(self.last_id, service_object);
+        self.last_id
+    }
+
+    fn get_cloned(&mut self, id: u32) -> Arc<dyn Dispatch> {
+        Arc::clone(&self.map.get(&id).unwrap())
+    }
+
+    fn remove(&mut self, id: u32) {
+        self.map.remove(&id);
+    }
+
+    fn len(&self) -> usize {
+        self.map.len()
+    }
+}
+
+pub(crate) struct TestPort {
+    dispatch_map: Mutex<TestDispatchMap>,
+}
+
+impl TestPort {
+    pub fn new() -> Self {
+        Self {
+            dispatch_map: Mutex::new(TestDispatchMap::new()),
+        }
+    }
+
+    fn register_len(&self) -> usize {
+        self.dispatch_map.lock().len()
+    }
 }
 
 impl std::fmt::Debug for TestPort {
@@ -36,19 +81,20 @@ impl std::fmt::Debug for TestPort {
 
 impl Port for TestPort {
     fn call(&self, packet: PacketView) -> Packet {
-        let response = self.target.read().as_ref().unwrap().dispatch_and_call(packet.method(), packet.data());
+        let object_id = packet.object_id();
+        let dispatcher = self.dispatch_map.lock().get_cloned(object_id);
+        let response = dispatcher.dispatch_and_call(packet.method(), packet.data());
         let mut response_packet = Packet::new_response_from_request(packet);
         response_packet.append_data(&response);
         response_packet
     }
 
-    fn delete_request(&self, _id: ServiceObjectId) {
-        self.target.write().take().unwrap();
+    fn delete_request(&self, id: ServiceObjectId) {
+        self.dispatch_map.lock().remove(id);
     }
 
     fn register(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange {
-        self.target.write().replace(service_object);
-        HandleToExchange(1234) //doesn't matter
+        HandleToExchange(self.dispatch_map.lock().insert(service_object))
     }
 }
 
@@ -82,9 +128,7 @@ impl Service1 for MyObject {
 // TODO: Replace manual Remote/Dispatcher construction to import/export
 #[test]
 fn macro1() {
-    let port = Arc::new(TestPort {
-        target: Default::default(),
-    });
+    let port = Arc::new(TestPort::new());
     let port_weak = Arc::downgrade(&port);
 
     let object = Arc::new(MyObject {
@@ -105,5 +149,5 @@ fn macro1() {
     assert_eq!(remote.f2("Hello", &Some(123)), ("Hello_123_4".to_owned(), "Bye".to_owned()));
     assert_eq!(remote.f2("Hello", &None), ("Hello_None_4".to_owned(), "ByeBye".to_owned()));
     drop(remote);
-    assert!(port.target.read().is_none());
+    assert_eq!(port.register_len(), 0);
 }
