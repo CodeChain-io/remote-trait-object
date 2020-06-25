@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+mod complex_trait;
+
 use crate as remote_trait_object;
 use remote_trait_object_macro as rto_macro;
 

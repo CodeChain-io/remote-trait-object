@@ -13,4 +13,5 @@ serde_cbor = "0.11.1"
 linkme = "0.2.1"
 
 [dev-dependencies]
+env_logger = "0.7.1"
 remote-trait-object-macro = { path = "../remote-trait-object-macro"}
