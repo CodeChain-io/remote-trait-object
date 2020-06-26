@@ -16,8 +16,29 @@
 
 use super::export_import::*;
 use super::*;
+use parking_lot::RwLock;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
+
+pub struct SBox<T: ?Sized + Service> {
+    value: std::cell::Cell<Option<Box<T>>>,
+}
+
+impl<T: ?Sized + Service> SBox<T> {
+    pub fn new(value: Box<T>) -> Self {
+        SBox {
+            value: std::cell::Cell::new(Some(value)),
+        }
+    }
+
+    pub(crate) fn take(&self) -> Box<T> {
+        self.value.take().unwrap()
+    }
+
+    pub fn unwrap(self) -> Box<T> {
+        self.value.take().unwrap()
+    }
+}
 
 pub struct SArc<T: ?Sized + Service> {
     value: std::cell::Cell<Option<Arc<T>>>,
@@ -39,10 +60,30 @@ impl<T: ?Sized + Service> SArc<T> {
     }
 }
 
+pub struct SRwLock<T: ?Sized + Service> {
+    value: std::cell::Cell<Option<Arc<RwLock<T>>>>,
+}
+
+impl<T: ?Sized + Service> SRwLock<T> {
+    pub fn new(value: Arc<RwLock<T>>) -> Self {
+        SRwLock {
+            value: std::cell::Cell::new(Some(value)),
+        }
+    }
+
+    pub(crate) fn take(&self) -> Arc<RwLock<T>> {
+        self.value.take().unwrap()
+    }
+
+    pub fn unwrap(self) -> Arc<RwLock<T>> {
+        self.value.take().unwrap()
+    }
+}
+
 /// This manages thread-local keys for port, which will be used in serialization of
 /// SArc. Note that this is required even in the inter-process setup.
 /// TODO: check that serde doens't spawn a thread while serializing.
-pub mod port_thread_local {
+pub(crate) mod port_thread_local {
     use super::*;
     use std::cell::RefCell;
 
@@ -72,6 +113,25 @@ pub mod port_thread_local {
     }
 }
 
+impl<T: ?Sized + Service + ExportServiceBox<T>> Serialize for SBox<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        let service = self.take();
+        let handle = T::export(port_thread_local::get_port(), service);
+        handle.serialize(serializer)
+    }
+}
+
+impl<'de, T: ?Sized + Service + ImportServiceBox<T>> Deserialize<'de> for SBox<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>, {
+        let handle = HandleToExchange::deserialize(deserializer)?;
+        Ok(SBox::new(T::import(port_thread_local::get_port(), handle)))
+    }
+}
+
 impl<T: ?Sized + Service + ExportServiceArc<T>> Serialize for SArc<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -88,6 +148,25 @@ impl<'de, T: ?Sized + Service + ImportServiceArc<T>> Deserialize<'de> for SArc<T
         D: Deserializer<'de>, {
         let handle = HandleToExchange::deserialize(deserializer)?;
         Ok(SArc::new(T::import(port_thread_local::get_port(), handle)))
+    }
+}
+
+impl<T: ?Sized + Service + ExportServiceRwLock<T>> Serialize for SRwLock<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        let service = self.take();
+        let handle = T::export(port_thread_local::get_port(), service);
+        handle.serialize(serializer)
+    }
+}
+
+impl<'de, T: ?Sized + Service + ImportServiceRwLock<T>> Deserialize<'de> for SRwLock<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>, {
+        let handle = HandleToExchange::deserialize(deserializer)?;
+        Ok(SRwLock::new(T::import(port_thread_local::get_port(), handle)))
     }
 }
 
