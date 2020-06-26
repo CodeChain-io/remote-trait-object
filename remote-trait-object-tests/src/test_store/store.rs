@@ -42,10 +42,11 @@ impl Store for MyPizzaStore {
         }
     }
 
-    fn order_pizza_credit_card(&self, menu: Pizza, credit_card: SArc<dyn CreditCard>) -> String {
+    fn order_pizza_credit_card(&self, menu: Pizza, credit_card: SRwLock<dyn CreditCard>) -> String {
         let credit_card = credit_card.unwrap();
         let (price, name) = self.order_pizza_common(menu);
-        match credit_card.pay(price + self.vat) {
+        let result = credit_card.write().pay(price + self.vat);
+        match result {
             Ok(_) => format!("Here's a delicious {}", name),
             Err(_) => "Not enough balance".to_owned(),
         }
