@@ -32,11 +32,9 @@ mod tests;
 pub use context::Context;
 pub use packet::{Packet, PacketView, SlotId};
 pub use port::Port;
+pub use service::export_import::*;
 pub use service::id::setup_identifiers;
-pub use service::{
-    export_service_arc, import_service_arc, serde_support::SArc, Dispatch, ExportServiceArc, Handle, HandleToExchange,
-    ImportServiceArc, MethodId, Service,
-};
+pub use service::{serde_support::SArc, Dispatch, Handle, HandleToExchange, MethodId, Service};
 
 pub mod macro_env {
     pub use super::*;
