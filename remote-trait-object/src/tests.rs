@@ -136,7 +136,7 @@ fn macro1() {
     let object = Arc::new(MyObject {
         mul: 4,
     }) as Arc<dyn Service1>;
-    let dispatcher = Arc::new(Service1Dispatcher {
+    let dispatcher = Arc::new(Service1ArcDispatcher {
         object,
     }) as Arc<dyn Dispatch>;
     let handle = port.register(dispatcher);

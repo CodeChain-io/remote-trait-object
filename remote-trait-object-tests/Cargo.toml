@@ -15,3 +15,4 @@ remote-trait-object-macro = { path = "../remote-trait-object-macro" }
 serde = { version = "1.0", features = ["derive"] }
 serde_cbor = "0.11.1"
 linkme = "0.2.1"
+parking_lot = "0.11.0"
