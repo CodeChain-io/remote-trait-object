@@ -71,7 +71,7 @@ pub mod port_thread_local {
     }
 }
 
-impl<T: ?Sized + Service + ExportService<T>> Serialize for SArc<T> {
+impl<T: ?Sized + Service + ExportServiceArc<T>> Serialize for SArc<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer, {
@@ -81,7 +81,7 @@ impl<T: ?Sized + Service + ExportService<T>> Serialize for SArc<T> {
     }
 }
 
-impl<'de, T: ?Sized + Service + ImportService<T>> Deserialize<'de> for SArc<T> {
+impl<'de, T: ?Sized + Service + ImportServiceArc<T>> Deserialize<'de> for SArc<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>, {
@@ -104,7 +104,7 @@ mod tests {
     mod serialize_test {
         use super::super::SArc;
         use super::mock;
-        use crate::{ExportService, HandleToExchange, Port, Service};
+        use crate::{ExportServiceArc, HandleToExchange, Port, Service};
         use std::sync::{Arc, Weak};
 
         trait Foo: Service {
@@ -128,7 +128,7 @@ mod tests {
         }
         impl Service for FooImpl {}
 
-        impl ExportService<dyn Foo> for dyn Foo {
+        impl ExportServiceArc<dyn Foo> for dyn Foo {
             fn export(_port: Weak<dyn Port>, object: Arc<dyn Foo>) -> HandleToExchange {
                 object.get_handle_to_exchange()
             }
@@ -160,7 +160,7 @@ mod tests {
     mod deserialize_test {
         use super::super::SArc;
         use super::mock;
-        use crate::{HandleToExchange, ImportService, Port, Service};
+        use crate::{HandleToExchange, ImportServiceArc, Port, Service};
         use std::sync::{Arc, Weak};
 
         trait Foo: Service {
@@ -175,7 +175,7 @@ mod tests {
             }
         }
         impl Service for FooImpl {}
-        impl ImportService<dyn Foo> for dyn Foo {
+        impl ImportServiceArc<dyn Foo> for dyn Foo {
             fn import(_port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<dyn Foo> {
                 Arc::new(FooImpl {
                     handle_to_exchange: handle,

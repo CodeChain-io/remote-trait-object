@@ -82,7 +82,7 @@ pub fn generate_remote(source_trait: &syn::ItemTrait) -> Result<TokenStream2, To
     imported_struct.extend(quote! {
         impl #env_path::Service for #struct_ident {
         }
-        impl #env_path::ImportService<dyn #trait_ident> for dyn #trait_ident {
+        impl #env_path::ImportServiceArc<dyn #trait_ident> for dyn #trait_ident {
             fn import(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> std::sync::Arc<dyn #trait_ident> {
                 std::sync::Arc::new(#struct_ident {
                     handle: #env_path::Handle::careful_new(handle, port),

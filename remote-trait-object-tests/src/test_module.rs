@@ -126,7 +126,7 @@ mod main {
     use super::ping::Ping;
     use cbasesandbox::ipc::intra::Intra;
     use once_cell::sync::OnceCell;
-    use remote_trait_object::{import_service, Context, HandleToExchange};
+    use remote_trait_object::{import_service_arc, Context, HandleToExchange};
     use std::sync::Arc;
     use std::thread;
 
@@ -160,7 +160,7 @@ mod main {
             if service_name == "ping" {
                 self.context
                     .ping_rto
-                    .set(import_service!(Ping, context, exchange))
+                    .set(import_service_arc!(Ping, context, exchange))
                     .expect("Imported more than one ping service");
             } else {
                 unreachable!();
@@ -184,7 +184,7 @@ mod main {
 mod ping {
     use super::control_loop;
     use cbasesandbox::ipc::intra::Intra;
-    use remote_trait_object::{export_service, Context, HandleToExchange, Service};
+    use remote_trait_object::{export_service_arc, Context, HandleToExchange, Service};
     use std::fmt;
     use std::sync::Arc;
     use std::thread;
@@ -205,7 +205,7 @@ mod ping {
 
         fn export(&mut self, context: &Context, service_name: String) -> HandleToExchange {
             if service_name == "ping" {
-                export_service!(Ping, context, Arc::new(PingImpl {}))
+                export_service_arc!(Ping, context, Arc::new(PingImpl {}))
             } else {
                 unreachable!();
             }

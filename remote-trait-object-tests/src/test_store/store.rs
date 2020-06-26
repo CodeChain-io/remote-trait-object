@@ -60,7 +60,7 @@ pub fn run_store(ipc: (IntraSend, IntraRecv), export_channel: Sender<Vec<u8>>, e
     let store = Arc::new(MyPizzaStore {
         vat: 1,
     }) as Arc<dyn Store>;
-    let handle = export_service::<dyn Store>(&rto_context, store);
+    let handle = export_service_arc::<dyn Store>(&rto_context, store);
     export_channel.send(serde_cbor::to_vec(&handle).unwrap()).unwrap();
     end_signal.recv().unwrap();
 }
