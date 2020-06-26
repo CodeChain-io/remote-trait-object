@@ -1,18 +1,18 @@
 use super::store::run_store;
 use super::types::*;
 use crossbeam::channel::bounded;
+use parking_lot::RwLock;
 use remote_trait_object::*;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Barrier};
 
 struct MyCreditCard {
-    balance: AtomicU32,
+    balance: u32,
 }
 
 impl CreditCard for MyCreditCard {
-    fn pay(&self, money: u32) -> Result<(), ()> {
-        if self.balance.load(Ordering::SeqCst) >= money {
-            self.balance.fetch_sub(money, Ordering::SeqCst);
+    fn pay(&mut self, money: u32) -> Result<(), ()> {
+        if self.balance >= money {
+            self.balance -= money;
             Ok(())
         } else {
             Err(())
@@ -64,18 +64,21 @@ fn test_order1() {
 #[test]
 fn test_order2() {
     fn f(store: Arc<dyn Store>) {
-        let card = Arc::new(MyCreditCard {
-            balance: AtomicU32::new(11),
-        });
-        let card_to_give = card.clone() as Arc<dyn CreditCard>;
+        let card = Arc::new(RwLock::new(MyCreditCard {
+            balance: 11,
+        }));
+        let card_to_give = card.clone() as Arc<RwLock<dyn CreditCard>>;
         assert_eq!(
-            store.order_pizza_credit_card(Pizza::Veggie, SArc::new(card_to_give.clone())),
+            store.order_pizza_credit_card(Pizza::Veggie, SRwLock::new(card_to_give.clone())),
             "Here's a delicious veggie pizza"
         );
-        assert_eq!(store.order_pizza_credit_card(Pizza::Veggie, SArc::new(card_to_give.clone())), "Not enough balance");
-        card.balance.fetch_add(10, Ordering::SeqCst);
         assert_eq!(
-            store.order_pizza_credit_card(Pizza::Veggie, SArc::new(card_to_give)),
+            store.order_pizza_credit_card(Pizza::Veggie, SRwLock::new(card_to_give.clone())),
+            "Not enough balance"
+        );
+        card.write().balance += 10;
+        assert_eq!(
+            store.order_pizza_credit_card(Pizza::Veggie, SRwLock::new(card_to_give)),
             "Here's a delicious veggie pizza"
         );
     }
@@ -86,9 +89,9 @@ fn test_order2() {
 fn test_order3() {
     fn f(store: Arc<dyn Store>) {
         let n = 64;
-        let card = Arc::new(MyCreditCard {
-            balance: AtomicU32::new(11 * n as u32),
-        });
+        let card = Arc::new(RwLock::new(MyCreditCard {
+            balance: 11 * n as u32,
+        }));
 
         let start = Arc::new(Barrier::new(n));
         let mut threads = Vec::new();
@@ -96,11 +99,11 @@ fn test_order3() {
         for _ in 0..n {
             let store = store.clone();
             let start = start.clone();
-            let card_to_give = card.clone() as Arc<dyn CreditCard>;
+            let card_to_give = card.clone() as Arc<RwLock<dyn CreditCard>>;
             threads.push(std::thread::spawn(move || {
                 start.wait();
                 assert_eq!(
-                    store.order_pizza_credit_card(Pizza::Pineapple, SArc::new(card_to_give)),
+                    store.order_pizza_credit_card(Pizza::Pineapple, SRwLock::new(card_to_give)),
                     "Here's a delicious pineapple pizza"
                 );
             }));
