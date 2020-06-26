@@ -20,12 +20,17 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2, TokenStream2> {
     let env_path = create_env_path();
     let trait_ident = source_trait.ident.clone();
-    let struct_ident = quote::format_ident!("{}Dispatcher", trait_ident);
+    let box_dispatcher_ident = quote::format_ident!("{}BoxDispatcher", trait_ident);
+    let arc_dispatcher_ident = quote::format_ident!("{}ArcDispatcher", trait_ident);
+    let rwlock_dispatcher_ident = quote::format_ident!("{}RwLockDispatcher", trait_ident);
 
     // TODO: If # of methods is larger than certain limit,
     // then introduce a closure list for the method dispatch,
     // instead of if-else clauses
     let mut if_else_clauses = TokenStream2::new();
+    let mut if_else_clauses_rwlock = TokenStream2::new();
+
+    let mut is_this_trait_mutable = false;
 
     for item in source_trait.items.iter() {
         let method = match item {
@@ -53,12 +58,21 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
         let mut the_args: syn::punctuated::Punctuated<syn::Expr, syn::token::Comma> =
             syn::punctuated::Punctuated::new();
 
-        let no_self = "All your method must take &self";
-        if let syn::FnArg::Typed(_) =
-            method.sig.inputs.first().ok_or_else(|| syn::Error::new_spanned(method, no_self).to_compile_error())?
+        let no_self = "All your method must take &self or &mut self (Object safety)";
+        let mut_self = match method
+            .sig
+            .inputs
+            .first()
+            .ok_or_else(|| syn::Error::new_spanned(method, no_self).to_compile_error())?
         {
-            return Err(syn::Error::new_spanned(method, no_self).to_compile_error())
-        }
+            syn::FnArg::Typed(_) => return Err(syn::Error::new_spanned(method, no_self).to_compile_error()),
+            syn::FnArg::Receiver(syn::Receiver {
+                mutability: Some(_),
+                ..
+            }) => true,
+            _ => false,
+        };
+        is_this_trait_mutable |= mut_self;
 
         for (j, arg_source) in method.sig.inputs.iter().skip(1).enumerate() {
             let the_iden = quote::format_ident!("a{}", j + 1);
@@ -116,6 +130,15 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
         let stmt_call = quote! {
             let result = self.object.#method_name(#the_args);
         };
+        let stmt_call_rwlock = if mut_self {
+            quote! {
+                let result = self.object.write().#method_name(#the_args);
+            }
+        } else {
+            quote! {
+                let result = self.object.read().#method_name(#the_args);
+            }
+        };
 
         let the_return = quote! {
             return serde_cbor::to_vec(&result).unwrap();
@@ -128,31 +151,123 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
                 #the_return
             }
         });
+
+        if_else_clauses_rwlock.extend(quote! {
+            if method == #id_ident.load(#env_path::ID_ORDERING) {
+                #stmt_deserialize
+                #stmt_call_rwlock
+                #the_return
+            }
+        });
     }
     if_else_clauses.extend(quote! {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     });
+    if_else_clauses_rwlock.extend(quote! {
+        panic!("Invalid remote-trait-object call. Fatal Error.")
+    });
 
-    Ok(quote! {
-        pub struct #struct_ident {
-            object: std::sync::Arc<dyn #trait_ident>
+    let box_dispatcher = if is_this_trait_mutable {
+        quote! {
+            pub struct #box_dispatcher_ident {
+                object: parking_lot::RwLock<Box<dyn #trait_ident>>
+            }
+            impl #box_dispatcher_ident {
+                fn new(object: Box<dyn #trait_ident>) -> Self {
+                    Self {
+                        object: parking_lot::RwLock::new(object)
+                    }
+                }
+            }
+            impl #env_path::Dispatch for #box_dispatcher_ident {
+                fn dispatch_and_call(&self, method: #env_path::MethodId, args: &[u8]) -> Vec<u8> {
+                    #if_else_clauses_rwlock
+                }
+            }
+            impl #env_path::ExportServiceBox<dyn #trait_ident> for dyn #trait_ident {
+                fn export(port: std::sync::Weak<dyn #env_path::Port>, object: Box<dyn #trait_ident>) -> #env_path::HandleToExchange {
+                    port.upgrade().unwrap().register(std::sync::Arc::new(#box_dispatcher_ident::new(object)))
+                }
+            }
         }
-        impl #struct_ident {
-            fn new(object: std::sync::Arc<dyn #trait_ident>) -> Self {
+    } else {
+        quote! {
+            pub struct #box_dispatcher_ident {
+                object: Box<dyn #trait_ident>
+            }
+            impl #box_dispatcher_ident {
+                fn new(object: Box<dyn #trait_ident>) -> Self {
+                    Self {
+                        object
+                    }
+                }
+            }
+            impl #env_path::Dispatch for #box_dispatcher_ident {
+                fn dispatch_and_call(&self, method: #env_path::MethodId, args: &[u8]) -> Vec<u8> {
+                    #if_else_clauses
+                }
+            }
+            impl #env_path::ExportServiceBox<dyn #trait_ident> for dyn #trait_ident {
+                fn export(port: std::sync::Weak<dyn #env_path::Port>, object: Box<dyn #trait_ident>) -> #env_path::HandleToExchange {
+                    port.upgrade().unwrap().register(std::sync::Arc::new(#box_dispatcher_ident::new(object)))
+                }
+            }
+        }
+    };
+
+    let arc_dispatcher = if is_this_trait_mutable {
+        quote! {}
+    } else {
+        quote! {
+            pub struct #arc_dispatcher_ident {
+                object: std::sync::Arc<dyn #trait_ident>
+            }
+            impl #arc_dispatcher_ident {
+                fn new(object: std::sync::Arc<dyn #trait_ident>) -> Self {
+                    Self {
+                        object
+                    }
+                }
+            }
+            impl #env_path::Dispatch for #arc_dispatcher_ident {
+                fn dispatch_and_call(&self, method: #env_path::MethodId, args: &[u8]) -> Vec<u8> {
+                    #if_else_clauses
+                }
+            }
+            impl #env_path::ExportServiceArc<dyn #trait_ident> for dyn #trait_ident {
+                fn export(port: std::sync::Weak<dyn #env_path::Port>, object: std::sync::Arc<dyn #trait_ident>) -> #env_path::HandleToExchange {
+                    port.upgrade().unwrap().register(std::sync::Arc::new(#arc_dispatcher_ident::new(object)))
+                }
+            }
+        }
+    };
+
+    let rwlock_dispatcher = quote! {
+        pub struct #rwlock_dispatcher_ident {
+            object: std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>>
+        }
+        impl #rwlock_dispatcher_ident {
+            fn new(object: std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>>) -> Self {
                 Self {
                     object
                 }
             }
         }
-        impl #env_path::Dispatch for #struct_ident {
+        impl #env_path::Dispatch for #rwlock_dispatcher_ident {
             fn dispatch_and_call(&self, method: #env_path::MethodId, args: &[u8]) -> Vec<u8> {
-                #if_else_clauses
+                #if_else_clauses_rwlock
             }
         }
-        impl #env_path::ExportServiceArc<dyn #trait_ident> for dyn #trait_ident {
-            fn export(port: std::sync::Weak<dyn #env_path::Port>, object: std::sync::Arc<dyn #trait_ident>) -> #env_path::HandleToExchange {
-                port.upgrade().unwrap().register(std::sync::Arc::new(#struct_ident::new(object)))
+        impl #env_path::ExportServiceRwLock<dyn #trait_ident> for dyn #trait_ident {
+            fn export(port: std::sync::Weak<dyn #env_path::Port>, object: std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>>) -> #env_path::HandleToExchange {
+                port.upgrade().unwrap().register(std::sync::Arc::new(#rwlock_dispatcher_ident::new(object)))
             }
         }
+    };
+
+    Ok(quote! {
+        #box_dispatcher
+        #arc_dispatcher
+        #rwlock_dispatcher
     })
 }
