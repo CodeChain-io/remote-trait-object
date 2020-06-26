@@ -73,26 +73,26 @@ where
 /// These two traits are associated with some specific service trait.
 /// These tratis will be implement by `dyn ServiceTrait` where `T = dyn ServiceTrait` as well.
 /// Macro will implement this trait with the target(expanding) service trait.
-pub trait ImportService<T: ?Sized + Service> {
+pub trait ImportServiceArc<T: ?Sized + Service> {
     fn import(port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<T>;
 }
 
-pub trait ExportService<T: ?Sized + Service> {
+pub trait ExportServiceArc<T: ?Sized + Service> {
     fn export(port: Weak<dyn Port>, object: Arc<T>) -> HandleToExchange;
 }
 
-pub fn export_service<T: ?Sized + Service + ExportService<T>>(
+pub fn export_service_arc<T: ?Sized + Service + ExportServiceArc<T>>(
     context: &crate::context::Context,
     service: Arc<T>,
 ) -> HandleToExchange {
-    <T as ExportService<T>>::export(context.get_port(), service)
+    <T as ExportServiceArc<T>>::export(context.get_port(), service)
 }
 
-pub fn import_service<T: ?Sized + Service + ImportService<T>>(
+pub fn import_service_arc<T: ?Sized + Service + ImportServiceArc<T>>(
     context: &crate::context::Context,
     handle: HandleToExchange,
 ) -> Arc<T> {
-    <T as ImportService<T>>::import(context.get_port(), handle)
+    <T as ImportServiceArc<T>>::import(context.get_port(), handle)
 }
 
 /// All service trait must implement this.

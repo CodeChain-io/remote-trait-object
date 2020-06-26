@@ -34,8 +34,8 @@ pub use packet::{Packet, PacketView, SlotId};
 pub use port::Port;
 pub use service::id::setup_identifiers;
 pub use service::{
-    export_service, import_service, serde_support::SArc, Dispatch, ExportService, Handle, HandleToExchange,
-    ImportService, MethodId, Service,
+    export_service_arc, import_service_arc, serde_support::SArc, Dispatch, ExportServiceArc, Handle, HandleToExchange,
+    ImportServiceArc, MethodId, Service,
 };
 
 pub mod macro_env {

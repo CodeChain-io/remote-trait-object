@@ -16,7 +16,7 @@
 
 use super::TestPort;
 use crate as remote_trait_object;
-use crate::{ExportService, ImportService, Port, SArc, Service};
+use crate::{ExportServiceArc, ImportServiceArc, Port, SArc, Service};
 use remote_trait_object_macro as rto_macro;
 use std::sync::{Arc, Mutex};
 
@@ -107,8 +107,8 @@ fn init_logger() {
 
 fn create_remote_a(port: Arc<dyn Port>) -> Arc<dyn A> {
     let a: Arc<dyn A> = Arc::new(SimpleA::new());
-    let handle = <dyn A as ExportService<dyn A>>::export(Arc::downgrade(&port), a);
-    <dyn A as ImportService<dyn A>>::import(Arc::downgrade(&port), handle)
+    let handle = <dyn A as ExportServiceArc<dyn A>>::export(Arc::downgrade(&port), a);
+    <dyn A as ImportServiceArc<dyn A>>::import(Arc::downgrade(&port), handle)
 }
 
 #[test]
