@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+pub mod export_import;
 pub mod id;
 pub mod remote;
 pub mod serde_support;
@@ -68,31 +69,6 @@ where
     fn dispatch_and_call(&self, method: MethodId, args: &[u8]) -> Vec<u8> {
         self(method, args)
     }
-}
-
-/// These two traits are associated with some specific service trait.
-/// These tratis will be implement by `dyn ServiceTrait` where `T = dyn ServiceTrait` as well.
-/// Macro will implement this trait with the target(expanding) service trait.
-pub trait ImportServiceArc<T: ?Sized + Service> {
-    fn import(port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<T>;
-}
-
-pub trait ExportServiceArc<T: ?Sized + Service> {
-    fn export(port: Weak<dyn Port>, object: Arc<T>) -> HandleToExchange;
-}
-
-pub fn export_service_arc<T: ?Sized + Service + ExportServiceArc<T>>(
-    context: &crate::context::Context,
-    service: Arc<T>,
-) -> HandleToExchange {
-    <T as ExportServiceArc<T>>::export(context.get_port(), service)
-}
-
-pub fn import_service_arc<T: ?Sized + Service + ImportServiceArc<T>>(
-    context: &crate::context::Context,
-    handle: HandleToExchange,
-) -> Arc<T> {
-    <T as ImportServiceArc<T>>::import(context.get_port(), handle)
 }
 
 /// All service trait must implement this.
