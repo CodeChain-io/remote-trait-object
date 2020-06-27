@@ -46,21 +46,23 @@ impl Context {
     }
 
     pub fn get_port(&self) -> Weak<dyn Port> {
-        Arc::downgrade(&self.port.clone().unwrap()) as Weak<dyn Port>
+        Arc::downgrade(&self.port.clone().expect("It becomes None only when the context is dropped.")) as Weak<dyn Port>
     }
 
     pub fn disable_garbage_collection(&self) {
-        self.port.as_ref().unwrap().set_no_drop();
+        self.port.as_ref().expect("It becomes None only when the context is dropped.").set_no_drop();
     }
 }
 
 impl Drop for Context {
     fn drop(&mut self) {
-        self.multiplexer.take().unwrap().shutdown();
+        self.multiplexer.take().expect("It becomes None only when the context is dropped.").shutdown();
         // Shutdown server after multiplexer
-        self.server.take().unwrap().shutdown();
+        self.server.take().expect("It becomes None only when the context is dropped.").shutdown();
         // Shutdown port after multiplexer
-        Arc::try_unwrap(self.port.take().unwrap()).unwrap().shutdown();
+        Arc::try_unwrap(self.port.take().expect("It becomes None only when the context is dropped."))
+            .unwrap()
+            .shutdown();
     }
 }
 
