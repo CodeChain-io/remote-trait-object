@@ -41,13 +41,7 @@ impl ServiceForwarder {
     pub fn new() -> Self {
         Self {
             service_objects: Default::default(),
-            available_ids: RwLock::new({
-                let mut queue = VecDeque::new();
-                for i in 0..100 {
-                    queue.push_back(i)
-                }
-                queue
-            }),
+            available_ids: RwLock::new((0u32..100).collect()),
             port: RwLock::new(null_weak_port()),
         }
     }
