@@ -90,7 +90,11 @@ impl Client {
         };
 
         self.ipc_send.send(packet).expect("port::Client::call is called after mulitplexer is dropped");
-        let response_packet = slot.response.recv().expect("counterparty send is managed by client");
+        let response_packet = slot.response.recv().expect(
+            "counterparty send is managed by client. \n\
+        This error might be due to drop after disconnection of the two remote-trait-object contexts. \n\
+        Please consider disable_garbage_collection() or explicit drop for the imported services.",
+        );
 
         self.call_slots.push(slot).expect("Client does not close the queue");
         response_packet
