@@ -184,9 +184,9 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
                     #if_else_clauses_rwlock
                 }
             }
-            impl #env_path::ExportServiceBox<dyn #trait_ident> for dyn #trait_ident {
-                fn export(port: std::sync::Weak<dyn #env_path::Port>, object: Box<dyn #trait_ident>) -> #env_path::HandleToExchange {
-                    port.upgrade().unwrap().register(std::sync::Arc::new(#box_dispatcher_ident::new(object)))
+            impl #env_path::ToDispatcher<dyn #trait_ident> for Box<dyn #trait_ident> {
+                fn to_dispatcher(self) -> std::sync::Arc<dyn #env_path::Dispatch> {
+                    std::sync::Arc::new(#box_dispatcher_ident::new(self))
                 }
             }
         }
@@ -207,9 +207,9 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
                     #if_else_clauses
                 }
             }
-            impl #env_path::ExportServiceBox<dyn #trait_ident> for dyn #trait_ident {
-                fn export(port: std::sync::Weak<dyn #env_path::Port>, object: Box<dyn #trait_ident>) -> #env_path::HandleToExchange {
-                    port.upgrade().unwrap().register(std::sync::Arc::new(#box_dispatcher_ident::new(object)))
+            impl #env_path::ToDispatcher<dyn #trait_ident> for Box<dyn #trait_ident> {
+                fn to_dispatcher(self) -> std::sync::Arc<dyn #env_path::Dispatch> {
+                    std::sync::Arc::new(#box_dispatcher_ident::new(self))
                 }
             }
         }
@@ -234,9 +234,9 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
                     #if_else_clauses
                 }
             }
-            impl #env_path::ExportServiceArc<dyn #trait_ident> for dyn #trait_ident {
-                fn export(port: std::sync::Weak<dyn #env_path::Port>, object: std::sync::Arc<dyn #trait_ident>) -> #env_path::HandleToExchange {
-                    port.upgrade().unwrap().register(std::sync::Arc::new(#arc_dispatcher_ident::new(object)))
+            impl #env_path::ToDispatcher<dyn #trait_ident> for std::sync::Arc<dyn #trait_ident> {
+                fn to_dispatcher(self) -> std::sync::Arc<dyn #env_path::Dispatch> {
+                    std::sync::Arc::new(#arc_dispatcher_ident::new(self))
                 }
             }
         }
@@ -258,9 +258,9 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
                 #if_else_clauses_rwlock
             }
         }
-        impl #env_path::ExportServiceRwLock<dyn #trait_ident> for dyn #trait_ident {
-            fn export(port: std::sync::Weak<dyn #env_path::Port>, object: std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>>) -> #env_path::HandleToExchange {
-                port.upgrade().unwrap().register(std::sync::Arc::new(#rwlock_dispatcher_ident::new(object)))
+        impl #env_path::ToDispatcher<dyn #trait_ident> for std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>> {
+            fn to_dispatcher(self) -> std::sync::Arc<dyn #env_path::Dispatch> {
+                std::sync::Arc::new(#rwlock_dispatcher_ident::new(self))
             }
         }
     };

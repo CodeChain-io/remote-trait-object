@@ -20,65 +20,32 @@ use parking_lot::RwLock;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
 
-pub struct SBox<T: ?Sized + Service> {
-    value: std::cell::Cell<Option<Box<T>>>,
+pub struct ServicePointer<T, P: ?Sized + Service> {
+    value: std::cell::Cell<Option<T>>,
+    /// This is for the generic Serialize/Deserialize implementation.
+    _p: std::marker::PhantomData<P>,
 }
 
-impl<T: ?Sized + Service> SBox<T> {
-    pub fn new(value: Box<T>) -> Self {
-        SBox {
+impl<T, P: ?Sized + Service> ServicePointer<T, P> {
+    pub fn new(value: T) -> Self {
+        ServicePointer {
             value: std::cell::Cell::new(Some(value)),
+            _p: std::marker::PhantomData,
         }
     }
 
-    pub(crate) fn take(&self) -> Box<T> {
+    pub(crate) fn take(&self) -> T {
         self.value.take().unwrap()
     }
 
-    pub fn unwrap(self) -> Box<T> {
-        self.value.take().unwrap()
-    }
-}
-
-pub struct SArc<T: ?Sized + Service> {
-    value: std::cell::Cell<Option<Arc<T>>>,
-}
-
-impl<T: ?Sized + Service> SArc<T> {
-    pub fn new(value: Arc<T>) -> Self {
-        SArc {
-            value: std::cell::Cell::new(Some(value)),
-        }
-    }
-
-    pub(crate) fn take(&self) -> Arc<T> {
-        self.value.take().unwrap()
-    }
-
-    pub fn unwrap(self) -> Arc<T> {
+    pub fn unwrap(self) -> T {
         self.value.take().unwrap()
     }
 }
 
-pub struct SRwLock<T: ?Sized + Service> {
-    value: std::cell::Cell<Option<Arc<RwLock<T>>>>,
-}
-
-impl<T: ?Sized + Service> SRwLock<T> {
-    pub fn new(value: Arc<RwLock<T>>) -> Self {
-        SRwLock {
-            value: std::cell::Cell::new(Some(value)),
-        }
-    }
-
-    pub(crate) fn take(&self) -> Arc<RwLock<T>> {
-        self.value.take().unwrap()
-    }
-
-    pub fn unwrap(self) -> Arc<RwLock<T>> {
-        self.value.take().unwrap()
-    }
-}
+pub type SBox<T> = ServicePointer<Box<T>, T>;
+pub type SArc<T> = ServicePointer<Arc<T>, T>;
+pub type SRwLock<T> = ServicePointer<Arc<RwLock<T>>, T>;
 
 /// This manages thread-local pointer of the port, which will be used in serialization of
 /// service objects wrapped in the S* pointers. Cuttently it is the only way to deliver the port
@@ -114,60 +81,22 @@ pub(crate) mod port_thread_local {
     }
 }
 
-impl<T: ?Sized + Service + ExportServiceBox<T>> Serialize for SBox<T> {
+impl<P: ?Sized + Service, T: ToDispatcher<P>> Serialize for ServicePointer<T, P> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer, {
         let service = self.take();
-        let handle = T::export(port_thread_local::get_port(), service);
+        let handle = port_thread_local::get_port().upgrade().unwrap().register(T::to_dispatcher(service));
         handle.serialize(serializer)
     }
 }
 
-impl<'de, T: ?Sized + Service + ImportServiceBox<T>> Deserialize<'de> for SBox<T> {
+impl<'de, P: ?Sized + Service, T: ToRemote<P>> Deserialize<'de> for ServicePointer<T, P> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>, {
         let handle = HandleToExchange::deserialize(deserializer)?;
-        Ok(SBox::new(T::import(port_thread_local::get_port(), handle)))
-    }
-}
-
-impl<T: ?Sized + Service + ExportServiceArc<T>> Serialize for SArc<T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer, {
-        let service = self.take();
-        let handle = T::export(port_thread_local::get_port(), service);
-        handle.serialize(serializer)
-    }
-}
-
-impl<'de, T: ?Sized + Service + ImportServiceArc<T>> Deserialize<'de> for SArc<T> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>, {
-        let handle = HandleToExchange::deserialize(deserializer)?;
-        Ok(SArc::new(T::import(port_thread_local::get_port(), handle)))
-    }
-}
-
-impl<T: ?Sized + Service + ExportServiceRwLock<T>> Serialize for SRwLock<T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer, {
-        let service = self.take();
-        let handle = T::export(port_thread_local::get_port(), service);
-        handle.serialize(serializer)
-    }
-}
-
-impl<'de, T: ?Sized + Service + ImportServiceRwLock<T>> Deserialize<'de> for SRwLock<T> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>, {
-        let handle = HandleToExchange::deserialize(deserializer)?;
-        Ok(SRwLock::new(T::import(port_thread_local::get_port(), handle)))
+        Ok(ServicePointer::new(T::to_remote(port_thread_local::get_port(), handle)))
     }
 }
 
@@ -185,7 +114,7 @@ mod tests {
     mod serialize_test {
         use super::super::SArc;
         use super::mock;
-        use crate::{ExportServiceArc, HandleToExchange, Port, Service};
+        use crate::{ToDispatcher, HandleToExchange, Port, Service, Dispatch};
         use std::sync::{Arc, Weak};
 
         trait Foo: Service {
@@ -209,9 +138,9 @@ mod tests {
         }
         impl Service for FooImpl {}
 
-        impl ExportServiceArc<dyn Foo> for dyn Foo {
-            fn export(_port: Weak<dyn Port>, object: Arc<dyn Foo>) -> HandleToExchange {
-                object.get_handle_to_exchange()
+        impl ToDispatcher<dyn Foo> for Arc<dyn Foo> {
+            fn to_dispatcher(self) -> Arc<dyn Dispatch> {
+                unimplemented!()
             }
         }
 
@@ -241,7 +170,7 @@ mod tests {
     mod deserialize_test {
         use super::super::SArc;
         use super::mock;
-        use crate::{HandleToExchange, ImportServiceArc, Port, Service};
+        use crate::{HandleToExchange, Port, Service, ToRemote};
         use std::sync::{Arc, Weak};
 
         trait Foo: Service {
@@ -256,8 +185,8 @@ mod tests {
             }
         }
         impl Service for FooImpl {}
-        impl ImportServiceArc<dyn Foo> for dyn Foo {
-            fn import(_port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<dyn Foo> {
+        impl ToRemote<dyn Foo> for Arc<dyn Foo> {
+            fn to_remote(_port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<dyn Foo> {
                 Arc::new(FooImpl {
                     handle_to_exchange: handle,
                 })
