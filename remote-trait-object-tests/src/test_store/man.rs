@@ -56,7 +56,7 @@ fn test_runner(f: impl Fn(Arc<dyn Store>)) {
 
     let rto_context = Context::new(send1, recv1);
     let store_handle: HandleToExchange = serde_cbor::from_slice(&export_recv.recv().unwrap()).unwrap();
-    let store = import_service_arc::<dyn Store>(&rto_context, store_handle);
+    let store = import_service(&rto_context, store_handle);
 
     f(store);
 

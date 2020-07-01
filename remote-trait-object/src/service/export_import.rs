@@ -14,77 +14,40 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::Dispatch;
 use super::*;
-use parking_lot::RwLock;
+use std::sync::Arc;
 
 // These traits are associated with some specific service trait.
 // These tratis will be implement by `dyn ServiceTrait` where `T = dyn ServiceTrait` as well.
 // Macro will implement this trait with the target(expanding) service trait.
 
-pub trait ExportServiceBox<T: ?Sized + Service> {
-    fn export(port: Weak<dyn Port>, object: Box<T>) -> HandleToExchange;
+/// Unused T is for avoiding violation of the orphan rule
+/// T will be local type for the crate, and that makes it possible to
+/// ```ignore
+/// impl ToDispatcher<dyn MyService> for Arc<dyn MyService>
+/// ```
+pub trait ToDispatcher<T: ?Sized + Service> {
+    fn to_dispatcher(self) -> Arc<dyn Dispatch>;
 }
 
-pub trait ExportServiceArc<T: ?Sized + Service> {
-    fn export(port: Weak<dyn Port>, object: Arc<T>) -> HandleToExchange;
-}
-
-pub trait ExportServiceRwLock<T: ?Sized + Service> {
-    fn export(port: Weak<dyn Port>, object: Arc<RwLock<T>>) -> HandleToExchange;
-}
-
-pub trait ImportServiceBox<T: ?Sized + Service> {
-    fn import(port: Weak<dyn Port>, handle: HandleToExchange) -> Box<T>;
-}
-
-pub trait ImportServiceArc<T: ?Sized + Service> {
-    fn import(port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<T>;
-}
-
-pub trait ImportServiceRwLock<T: ?Sized + Service> {
-    fn import(port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<RwLock<T>>;
+/// Unused T is for avoiding violation of the orphan rule, like `ToDispatcher`
+pub trait ToRemote<T: ?Sized + Service>: Sized {
+    fn to_remote(port: Weak<dyn Port>, handle: HandleToExchange) -> Self;
 }
 
 // These functions are utilities for the generic traits above
 
-pub fn export_service_box<T: ?Sized + Service + ExportServiceBox<T>>(
+pub fn export_service<T: ?Sized + Service>(
     context: &crate::context::Context,
-    service: Box<T>,
+    service: impl ToDispatcher<T>,
 ) -> HandleToExchange {
-    <T as ExportServiceBox<T>>::export(context.get_port(), service)
+    context.get_port().upgrade().unwrap().register(service.to_dispatcher())
 }
 
-pub fn export_service_arc<T: ?Sized + Service + ExportServiceArc<T>>(
-    context: &crate::context::Context,
-    service: Arc<T>,
-) -> HandleToExchange {
-    <T as ExportServiceArc<T>>::export(context.get_port(), service)
-}
-
-pub fn export_service_rwlock<T: ?Sized + Service + ExportServiceRwLock<T>>(
-    context: &crate::context::Context,
-    service: Arc<RwLock<T>>,
-) -> HandleToExchange {
-    <T as ExportServiceRwLock<T>>::export(context.get_port(), service)
-}
-
-pub fn import_service_box<T: ?Sized + Service + ImportServiceBox<T>>(
+pub fn import_service<T: ?Sized + Service, P: ToRemote<T>>(
     context: &crate::context::Context,
     handle: HandleToExchange,
-) -> Box<T> {
-    <T as ImportServiceBox<T>>::import(context.get_port(), handle)
-}
-
-pub fn import_service_arc<T: ?Sized + Service + ImportServiceArc<T>>(
-    context: &crate::context::Context,
-    handle: HandleToExchange,
-) -> Arc<T> {
-    <T as ImportServiceArc<T>>::import(context.get_port(), handle)
-}
-
-pub fn import_service_rwlock<T: ?Sized + Service + ImportServiceRwLock<T>>(
-    context: &crate::context::Context,
-    handle: HandleToExchange,
-) -> Arc<RwLock<T>> {
-    <T as ImportServiceRwLock<T>>::import(context.get_port(), handle)
+) -> P {
+    P::to_remote(context.get_port(), handle)
 }
