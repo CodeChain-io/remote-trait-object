@@ -80,8 +80,9 @@ impl<T: ?Sized + Service> SRwLock<T> {
     }
 }
 
-/// This manages thread-local keys for port, which will be used in serialization of
-/// SArc. Note that this is required even in the inter-process setup.
+/// This manages thread-local pointer of the port, which will be used in serialization of
+/// service objects wrapped in the S* pointers. Cuttently it is the only way to deliver the port
+/// within the de/serialization context.
 /// TODO: check that serde doens't spawn a thread while serializing.
 pub(crate) mod port_thread_local {
     use super::*;
