@@ -42,8 +42,6 @@ impl Terminate for Terminator {
 }
 
 impl TransportRecv for IntraRecv {
-    type Terminator = Terminator;
-
     fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError> {
         let mut selector = Select::new();
         let data_receiver_index = selector.recv(&self.data_receiver);
@@ -78,8 +76,8 @@ impl TransportRecv for IntraRecv {
         Ok(data)
     }
 
-    fn create_terminator(&self) -> Self::Terminator {
-        Terminator(self.terminator.clone())
+    fn create_terminator(&self) -> Box<dyn Terminate> {
+        Box::new(Terminator(self.terminator.clone()))
     }
 }
 
