@@ -57,7 +57,7 @@ impl Multiplexer {
         let (request_send, request_recv) = channel::bounded(1);
         let (response_send, response_recv) = channel::bounded(1);
         let receiver_terminator: Option<Mutex<Box<dyn Terminate>>> =
-            Some(Mutex::new(Box::new(transport_recv.create_terminator())));
+            Some(Mutex::new(transport_recv.create_terminator()));
 
         let receiver_thread = thread::Builder::new()
             .name("receiver multiplexer".into())
