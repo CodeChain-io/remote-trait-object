@@ -16,7 +16,7 @@
 
 pub mod multiplex;
 
-pub trait IpcSend: Send {
+pub trait TransportSend: Send {
     /// It might block until counterparty's recv(). Even if not, the order is still guaranteed.
     fn send(&self, data: &[u8]);
 }
@@ -32,7 +32,7 @@ pub trait Terminate: Send {
     fn terminate(&self);
 }
 
-pub trait IpcRecv: Send {
+pub trait TransportRecv: Send {
     type Terminator: Terminate;
 
     /// Returns Err only for the timeout or termination wake-up(otherwise panic)

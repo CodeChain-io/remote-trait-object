@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ipc::multiplex::{self, ForwardResult, MultiplexResult, Multiplexer};
-use crate::ipc::{IpcRecv, IpcSend};
 use crate::packet::{PacketView, SlotType};
 use crate::port::{client::Client, server::Server, BasicPort, Port};
+use crate::transport::multiplex::{self, ForwardResult, MultiplexResult, Multiplexer};
+use crate::transport::{TransportRecv, TransportSend};
 use std::sync::{Arc, Weak};
 
 pub struct Context {
@@ -27,13 +27,13 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new<S: IpcSend + 'static, R: IpcRecv + 'static>(ipc_send: S, ipc_recv: R) -> Self {
+    pub fn new<S: TransportSend + 'static, R: TransportRecv + 'static>(transport_send: S, transport_recv: R) -> Self {
         let MultiplexResult {
             multiplexer,
             request_recv,
             response_recv,
             multiplexed_send,
-        } = Multiplexer::multiplex::<R, S, PacketForward>(ipc_send, ipc_recv);
+        } = Multiplexer::multiplex::<R, S, PacketForward>(transport_send, transport_recv);
         let client = Client::new(multiplexed_send.clone(), response_recv);
         let port = BasicPort::new(client);
         let server = Server::new(port.get_registry(), multiplexed_send, request_recv);

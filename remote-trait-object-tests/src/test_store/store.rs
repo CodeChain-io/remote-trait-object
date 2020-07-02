@@ -1,5 +1,5 @@
 use super::types::*;
-use crate::ipc::{IntraRecv, IntraSend};
+use crate::transport::{IntraRecv, IntraSend};
 use crossbeam::channel::{Receiver, Sender};
 use remote_trait_object::*;
 use std::sync::Arc;
@@ -55,9 +55,9 @@ impl Store for MyPizzaStore {
 
 impl Service for MyPizzaStore {}
 
-pub fn run_store(ipc: (IntraSend, IntraRecv), export_channel: Sender<Vec<u8>>, end_signal: Receiver<()>) {
-    let (ipc_send, ipc_recv) = ipc;
-    let rto_context = Context::new(ipc_send, ipc_recv);
+pub fn run_store(transport: (IntraSend, IntraRecv), export_channel: Sender<Vec<u8>>, end_signal: Receiver<()>) {
+    let (transport_send, transport_recv) = transport;
+    let rto_context = Context::new(transport_send, transport_recv);
     let store = Arc::new(MyPizzaStore {
         vat: 1,
     }) as Arc<dyn Store>;

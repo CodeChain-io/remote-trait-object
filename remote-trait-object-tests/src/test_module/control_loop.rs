@@ -15,14 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use cbasesandbox::execution::executee;
-use cbasesandbox::ipc::intra::Intra;
-use cbasesandbox::ipc::unix_socket::DomainSocket;
-use cbasesandbox::ipc::Ipc;
+use cbasesandbox::transport::intra::Intra;
+use cbasesandbox::transport::unix_socket::DomainSocket;
+use cbasesandbox::transport::Transport;
 use remote_trait_object::{Context, HandleToExchange};
 use std::collections::HashMap;
 
-pub fn module_control_loop<IPC: Ipc, Module: Bootstrap>(args: Vec<String>) {
-    let ctx = executee::start::<IPC>(args);
+pub fn module_control_loop<TP: Transport, Module: Bootstrap>(args: Vec<String>) {
+    let ctx = executee::start::<TP>(args);
 
     let args: Vec<u8> = recv(&ctx);
     let mut rto_contexts = HashMap::<String, remote_trait_object::Context>::new();
@@ -32,9 +32,9 @@ pub fn module_control_loop<IPC: Ipc, Module: Bootstrap>(args: Vec<String>) {
         let message: String = recv(&ctx);
         debug!("Receved message {}", message);
         if message == "link" {
-            let (counter_module_name, ipc_type, ipc_config) = recv(&ctx);
-            debug!("Received link({}, {}, {:?})", counter_module_name, ipc_type, ipc_config);
-            let rto_context = create_ipc_context(ipc_type, ipc_config);
+            let (counter_module_name, transport_type, transport_config) = recv(&ctx);
+            debug!("Received link({}, {}, {:?})", counter_module_name, transport_type, transport_config);
+            let rto_context = create_transport_context(transport_type, transport_config);
             let old = rto_contexts.insert(counter_module_name, rto_context);
             // we assert before dropping old to avoid (hard-to-debug) blocking.
             assert!(old.is_none(), "You must unlink first to link an existing remote trait object context");
@@ -67,26 +67,26 @@ pub fn module_control_loop<IPC: Ipc, Module: Bootstrap>(args: Vec<String>) {
     ctx.terminate();
 }
 
-fn recv<IPC: Ipc, T: serde::de::DeserializeOwned>(ctx: &executee::Context<IPC>) -> T {
-    let bytes = ctx.ipc.as_ref().unwrap().recv(None).unwrap();
+fn recv<TP: Transport, T: serde::de::DeserializeOwned>(ctx: &executee::Context<TP>) -> T {
+    let bytes = ctx.transport.as_ref().unwrap().recv(None).unwrap();
     serde_cbor::from_slice(&bytes).unwrap()
 }
 
-fn send<I: Ipc, T: serde::Serialize>(ctx: &executee::Context<I>, data: &T) {
-    ctx.ipc.as_ref().unwrap().send(&serde_cbor::to_vec(data).unwrap());
+fn send<I: Transport, T: serde::Serialize>(ctx: &executee::Context<I>, data: &T) {
+    ctx.transport.as_ref().unwrap().send(&serde_cbor::to_vec(data).unwrap());
 }
 
-fn create_ipc_context(ipc_type: String, ipc_config: Vec<u8>) -> remote_trait_object::Context {
-    if ipc_type == "DomainSocket" {
-        let ipc = DomainSocket::new(ipc_config);
-        let (send, recv) = ipc.split();
+fn create_transport_context(transport_type: String, transport_config: Vec<u8>) -> remote_trait_object::Context {
+    if transport_type == "DomainSocket" {
+        let transport = DomainSocket::new(transport_config);
+        let (send, recv) = transport.split();
         remote_trait_object::Context::new(send, recv)
-    } else if ipc_type == "Intra" {
-        let ipc = Intra::new(ipc_config);
-        let (send, recv) = ipc.split();
+    } else if transport_type == "Intra" {
+        let transport = Intra::new(transport_config);
+        let (send, recv) = transport.split();
         remote_trait_object::Context::new(send, recv)
     } else {
-        panic!("Invalid ipc type")
+        panic!("Invalid transport type")
     }
 }
 

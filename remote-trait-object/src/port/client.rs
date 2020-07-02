@@ -40,13 +40,13 @@ struct CallSlot {
 #[derive(Debug)]
 pub struct Client {
     call_slots: Arc<Queue<CallSlot>>,
-    ipc_send: Sender<Packet>,
+    transport_send: Sender<Packet>,
     receiver_thread: Option<thread::JoinHandle<()>>,
     joined_event_receiver: Receiver<()>,
 }
 
 impl Client {
-    pub fn new(ipc_send: Sender<Packet>, ipc_recv: Receiver<Packet>) -> Self {
+    pub fn new(transport_send: Sender<Packet>, transport_recv: Receiver<Packet>) -> Self {
         let (joined_event_sender, joined_event_receiver) = bounded(1);
         let callslot_size = SlotId::new(CALLSLOT_SIZE);
         let call_slots = Arc::new(Queue::new(callslot_size.as_usize()));
@@ -65,11 +65,11 @@ impl Client {
 
         Client {
             call_slots,
-            ipc_send,
+            transport_send,
             receiver_thread: Some(
                 thread::Builder::new()
                     .spawn(move || {
-                        if let Err(RecvError) = receive_loop(ipc_recv, to_slot_receivers) {
+                        if let Err(RecvError) = receive_loop(transport_recv, to_slot_receivers) {
                             // Multiplexer is closed
                         }
                         joined_event_sender.send(()).unwrap();
@@ -89,7 +89,7 @@ impl Client {
             packet
         };
 
-        self.ipc_send.send(packet).expect("port::Client::call is called after mulitplexer is dropped");
+        self.transport_send.send(packet).expect("port::Client::call is called after mulitplexer is dropped");
         let response_packet = slot.response.recv().expect(
             "counterparty send is managed by client. \n\
         This error might be due to drop after disconnection of the two remote-trait-object contexts. \n\
@@ -122,9 +122,9 @@ impl Drop for Client {
     }
 }
 
-fn receive_loop(ipc_recv: Receiver<Packet>, to_slot_receivers: Vec<Sender<Packet>>) -> Result<(), RecvError> {
+fn receive_loop(transport_recv: Receiver<Packet>, to_slot_receivers: Vec<Sender<Packet>>) -> Result<(), RecvError> {
     loop {
-        let packet = ipc_recv.recv()?;
+        let packet = transport_recv.recv()?;
         let slot_id = packet.view().slot();
         to_slot_receivers[slot_id.as_usize()]
             .send(packet)

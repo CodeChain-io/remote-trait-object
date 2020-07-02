@@ -21,13 +21,13 @@ extern crate log;
 
 mod context;
 mod forwarder;
-pub mod ipc;
 mod packet;
 mod port;
 mod queue;
 mod service;
 #[cfg(test)]
 mod tests;
+pub mod transport;
 
 pub use context::Context;
 pub use packet::{Packet, PacketView, SlotId};

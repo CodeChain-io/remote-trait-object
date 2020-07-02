@@ -23,12 +23,12 @@ impl CreditCard for MyCreditCard {
 impl Service for MyCreditCard {}
 
 fn test_runner(f: impl Fn(Arc<dyn Store>)) {
-    let crate::ipc::IpcEnds {
+    let crate::transport::TransportEnds {
         recv1,
         send1,
         recv2,
         send2,
-    } = crate::ipc::create();
+    } = crate::transport::create();
 
     let (export_send, export_recv) = bounded(100);
     let (signal_send, signal_recv) = bounded(0);

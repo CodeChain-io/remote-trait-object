@@ -29,14 +29,14 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new<H>(handler: Arc<H>, ipc_send: Sender<Packet>, ipc_recv: Receiver<Packet>) -> Self
+    pub fn new<H>(handler: Arc<H>, transport_send: Sender<Packet>, transport_recv: Receiver<Packet>) -> Self
     where
         H: Handler + Send + 'static, {
         let (joined_event_sender, joined_event_receiver) = channel::bounded(1);
         let receiver_thread = thread::Builder::new()
             .name("port server receiver".into())
             .spawn(move || {
-                receiver(handler, ipc_send, ipc_recv);
+                receiver(handler, transport_send, transport_recv);
                 joined_event_sender.send(()).expect("Server will be dropped after thread is joined");
             })
             .unwrap();
@@ -50,7 +50,9 @@ impl Server {
     pub fn shutdown(mut self) {
         match self.joined_event_receiver.recv_timeout(time::Duration::from_millis(500)) {
             Err(Timeout) => {
-                panic!("There may be a deadlock or misuse of Server. Call Server::shutdown when ipc_recv is closed");
+                panic!(
+                    "There may be a deadlock or misuse of Server. Call Server::shutdown when transport_recv is closed"
+                );
             }
             Err(Disconnected) => {
                 panic!("Maybe receiver thread panics");
@@ -68,16 +70,16 @@ impl Drop for Server {
     }
 }
 
-fn receiver<H>(handler: Arc<H>, ipc_send: Sender<Packet>, ipc_recv: Receiver<Packet>)
+fn receiver<H>(handler: Arc<H>, transport_send: Sender<Packet>, transport_recv: Receiver<Packet>)
 where
     H: Handler + 'static, {
     let received_packets = Arc::new(Queue::new(100));
-    let joiners = create_handler_threads(handler, ipc_send, Arc::clone(&received_packets));
+    let joiners = create_handler_threads(handler, transport_send, Arc::clone(&received_packets));
 
-    while let Ok(request) = ipc_recv.recv() {
+    while let Ok(request) = transport_recv.recv() {
         received_packets.push(request).expect("Queue will close after this loop");
     }
-    // ipc_recv is closed.
+    // transport_recv is closed.
 
     received_packets.close();
     for joiner in joiners {
@@ -87,14 +89,14 @@ where
 
 fn create_handler_threads<H>(
     handler: Arc<H>,
-    ipc_send: Sender<Packet>,
+    transport_send: Sender<Packet>,
     received_packets: Arc<Queue<Packet>>,
 ) -> Vec<thread::JoinHandle<()>>
 where
     H: Handler + 'static, {
     let mut joins = Vec::new();
 
-    fn handler_loop<H: Handler>(handler: Arc<H>, ipc_send: Sender<Packet>, received_packets: Arc<Queue<Packet>>) {
+    fn handler_loop<H: Handler>(handler: Arc<H>, transport_send: Sender<Packet>, received_packets: Arc<Queue<Packet>>) {
         loop {
             let request = match received_packets.pop(None) {
                 Ok(packet) => packet,
@@ -107,7 +109,7 @@ where
             trace!("Handler result in Port Server {:?}", response);
             let mut response_packet = Packet::new_response_from_request(request.view());
             response_packet.append_data(&response);
-            if let Err(err) = ipc_send.send(response_packet) {
+            if let Err(err) = transport_send.send(response_packet) {
                 trace!("Multiplexer is dropped while sending a packet {:?}", err.into_inner());
                 break
             };
@@ -117,12 +119,12 @@ where
     // FIXME: get thread count from config
     for i in 0..4 {
         let packet_queue_ = Arc::clone(&received_packets);
-        let ipc_send_ = ipc_send.clone();
+        let transport_send_ = transport_send.clone();
         let handler_ = Arc::clone(&handler);
 
         let join_handle = thread::Builder::new()
             .name(format!("port server send {}", i))
-            .spawn(move || handler_loop(handler_, ipc_send_, packet_queue_))
+            .spawn(move || handler_loop(handler_, transport_send_, packet_queue_))
             .unwrap();
         joins.push(join_handle);
     }
