@@ -32,13 +32,6 @@ pub type MethodId = u32;
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct HandleToExchange(pub(crate) ServiceObjectId);
 
-// TODO: Remove this
-impl HandleToExchange {
-    pub fn new_singleton() -> Self {
-        HandleToExchange(0)
-    }
-}
-
 /// Remote service will carry this.
 #[derive(Debug)]
 pub struct Handle {
