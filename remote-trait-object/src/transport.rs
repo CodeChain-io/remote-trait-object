@@ -35,7 +35,10 @@ pub trait Terminate: Send {
 pub trait TransportRecv: Send {
     type Terminator: Terminate;
 
-    /// Returns Err only for the timeout or termination wake-up(otherwise panic)
+    /// Returns Err only for the timeout or termination wake-up(otherwise panic).
+    ///
+    /// Note that it is not guaranteed to receive remaining data after the counter end has
+    /// been closed earlier. You should assume that you will receive Err(Termination) in such case.
     fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError>;
     /// Create a terminate switch that can be sent to another thread
     fn create_terminator(&self) -> Self::Terminator;
