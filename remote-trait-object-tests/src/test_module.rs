@@ -16,8 +16,8 @@
 
 mod control_loop;
 
-use cbasesandbox::ipc::intra::Intra;
-use cbasesandbox::ipc::{Ipc, IpcRecv, IpcSend};
+use cbasesandbox::transport::intra::Intra;
+use cbasesandbox::transport::{Transport, TransportRecv, TransportSend};
 use remote_trait_object::HandleToExchange;
 use std::fmt;
 use std::sync::Arc;
@@ -38,60 +38,60 @@ fn test_module() {
     let ping_join = ping::run_ping_module(vec!["ping".to_string(), hex::encode(ping_args)]);
     info!("ping module created");
 
-    let main_control_ipc = Arc::new(Intra::new(main_control));
-    let ping_control_ipc = Arc::new(Intra::new(ping_control));
+    let main_control_transport = Arc::new(Intra::new(main_control));
+    let ping_control_transport = Arc::new(Intra::new(ping_control));
 
     {
         info!("Read init for main");
-        assert_eq!(main_control_ipc.recv(None).unwrap(), b"#INIT\0");
+        assert_eq!(main_control_transport.recv(None).unwrap(), b"#INIT\0");
         info!("Read init for ping");
-        assert_eq!(ping_control_ipc.recv(None).unwrap(), b"#INIT\0");
+        assert_eq!(ping_control_transport.recv(None).unwrap(), b"#INIT\0");
 
         info!("Send args to main");
-        send(&main_control_ipc, &b"args".to_vec());
+        send(&main_control_transport, &b"args".to_vec());
         info!("Send args to ping");
-        send(&ping_control_ipc, &b"args".to_vec());
+        send(&ping_control_transport, &b"args".to_vec());
 
         let (to_ping, to_main) = Intra::arguments_for_both_ends();
         {
-            let main_control_ipc_ = Arc::clone(&main_control_ipc);
+            let main_control_transport_ = Arc::clone(&main_control_transport);
             let join1 = thread::spawn(move || {
                 info!("send link to main");
-                send(&main_control_ipc_, &"link".to_string());
-                send(&main_control_ipc_, &("ping", "Intra", to_ping));
-                recv_done(&main_control_ipc_);
+                send(&main_control_transport_, &"link".to_string());
+                send(&main_control_transport_, &("ping", "Intra", to_ping));
+                recv_done(&main_control_transport_);
             });
 
-            let ping_control_ipc_ = Arc::clone(&ping_control_ipc);
+            let ping_control_transport_ = Arc::clone(&ping_control_transport);
             let join2 = thread::spawn(move || {
                 info!("send link to ping");
-                send(&ping_control_ipc_, &"link".to_string());
-                send(&ping_control_ipc_, &("main", "Intra", to_main));
-                recv_done(&ping_control_ipc_);
+                send(&ping_control_transport_, &"link".to_string());
+                send(&ping_control_transport_, &("main", "Intra", to_main));
+                recv_done(&ping_control_transport_);
             });
 
             join1.join().unwrap();
             join2.join().unwrap();
         }
 
-        send(&ping_control_ipc, &"handle_export".to_string());
-        send(&ping_control_ipc, &("main", "ping"));
-        let handle: HandleToExchange = recv(&ping_control_ipc);
-        recv_done(&ping_control_ipc);
+        send(&ping_control_transport, &"handle_export".to_string());
+        send(&ping_control_transport, &("main", "ping"));
+        let handle: HandleToExchange = recv(&ping_control_transport);
+        recv_done(&ping_control_transport);
 
-        send(&main_control_ipc, &"handle_import".to_string());
-        send(&main_control_ipc, &("ping", "ping", handle));
-        recv_done(&main_control_ipc);
+        send(&main_control_transport, &"handle_import".to_string());
+        send(&main_control_transport, &("ping", "ping", handle));
+        recv_done(&main_control_transport);
 
-        send(&main_control_ipc, &"start".to_string());
+        send(&main_control_transport, &"start".to_string());
         // The line below is the most important line in this test.
-        assert_recv_msg(&main_control_ipc, &"ping and pong received".to_string());
-        recv_done(&main_control_ipc);
+        assert_recv_msg(&main_control_transport, &"ping and pong received".to_string());
+        recv_done(&main_control_transport);
 
-        send(&main_control_ipc, &"quit".to_string());
-        main_control_ipc.send(b"#TERMINATE\0");
-        send(&ping_control_ipc, &"quit".to_string());
-        ping_control_ipc.send(b"#TERMINATE\0");
+        send(&main_control_transport, &"quit".to_string());
+        main_control_transport.send(b"#TERMINATE\0");
+        send(&ping_control_transport, &"quit".to_string());
+        ping_control_transport.send(b"#TERMINATE\0");
 
         info!("DONE");
     }
@@ -100,31 +100,31 @@ fn test_module() {
     ping_join.join().unwrap();
 }
 
-fn recv<IPC: Ipc, T: serde::de::DeserializeOwned>(ipc: impl AsRef<IPC>) -> T {
-    let bytes = ipc.as_ref().recv(None).unwrap();
+fn recv<TP: Transport, T: serde::de::DeserializeOwned>(transport: impl AsRef<TP>) -> T {
+    let bytes = transport.as_ref().recv(None).unwrap();
     serde_cbor::from_slice(&bytes).unwrap()
 }
 
-fn recv_done<IPC: Ipc>(ipc: impl AsRef<IPC>) {
-    let done: String = recv(ipc);
+fn recv_done<TP: Transport>(transport: impl AsRef<TP>) {
+    let done: String = recv(transport);
     assert_eq!(done, "done");
 }
 
-fn assert_recv_msg<IPC: Ipc, T>(ipc: impl AsRef<IPC>, msg: &T)
+fn assert_recv_msg<TP: Transport, T>(transport: impl AsRef<TP>, msg: &T)
 where
     T: serde::de::DeserializeOwned + PartialEq + fmt::Debug, {
-    let received: T = recv(ipc);
+    let received: T = recv(transport);
     assert_eq!(&received, msg);
 }
 
-fn send<IPC: Ipc + 'static, T: serde::Serialize>(ipc: impl AsRef<IPC>, data: &T) {
-    ipc.as_ref().send(&serde_cbor::to_vec(data).unwrap());
+fn send<TP: Transport + 'static, T: serde::Serialize>(transport: impl AsRef<TP>, data: &T) {
+    transport.as_ref().send(&serde_cbor::to_vec(data).unwrap());
 }
 
 mod main {
     use super::control_loop;
     use super::ping::Ping;
-    use cbasesandbox::ipc::intra::Intra;
+    use cbasesandbox::transport::intra::Intra;
     use once_cell::sync::OnceCell;
     use remote_trait_object::{import_service_arc, Context, HandleToExchange};
     use std::sync::Arc;
@@ -183,7 +183,7 @@ mod main {
 
 mod ping {
     use super::control_loop;
-    use cbasesandbox::ipc::intra::Intra;
+    use cbasesandbox::transport::intra::Intra;
     use remote_trait_object::{export_service_arc, Context, HandleToExchange, Service};
     use std::fmt;
     use std::sync::Arc;

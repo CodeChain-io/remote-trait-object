@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ipc::{IntraRecv, IntraSend, IpcEnds};
+use crate::transport::{IntraRecv, IntraSend, TransportEnds};
 use remote_trait_object::Context;
 use remote_trait_object::Packet;
 use std::sync::mpsc;
@@ -37,12 +37,12 @@ fn ping() {
 
     panic_after(std::time::Duration::from_secs(1), || {
         debug!("ping test start");
-        let IpcEnds {
+        let TransportEnds {
             send1,
             recv1,
             send2,
             recv2,
-        } = crate::ipc::create();
+        } = crate::transport::create();
 
         let number_of_calls = 4;
         let wait_before_test_end = 1;
@@ -79,8 +79,8 @@ fn ping() {
     });
 }
 
-fn create_ping_module(ipc_send: IntraSend, ipc_recv: IntraRecv, barrier: Arc<Barrier>) -> Context {
-    let cmd_rto = Context::new(ipc_send, ipc_recv);
+fn create_ping_module(transport_send: IntraSend, transport_recv: IntraRecv, barrier: Arc<Barrier>) -> Context {
+    let cmd_rto = Context::new(transport_send, transport_recv);
     let port = cmd_rto.get_port().upgrade().unwrap();
     let _handle_to_export = port.register(Arc::new(move |_method: u32, _args: &[u8]| {
         // Wait until barrier.wait is called in concurrently

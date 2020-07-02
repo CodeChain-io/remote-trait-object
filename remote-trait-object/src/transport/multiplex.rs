@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ipc::{IpcRecv, IpcSend, RecvError, Terminate};
+use crate::transport::{RecvError, Terminate, TransportRecv, TransportSend};
 use crate::{Packet, PacketView};
 use crossbeam::channel::{self, Receiver, Sender};
 use parking_lot::Mutex;
@@ -46,26 +46,29 @@ pub struct Multiplexer {
 }
 
 impl Multiplexer {
-    pub fn multiplex<IpcReceiver, IpcSender, Forwarder>(ipc_send: IpcSender, ipc_recv: IpcReceiver) -> MultiplexResult
+    pub fn multiplex<TransportReceiver, TransportSender, Forwarder>(
+        transport_send: TransportSender,
+        transport_recv: TransportReceiver,
+    ) -> MultiplexResult
     where
-        IpcReceiver: IpcRecv + 'static,
-        IpcSender: IpcSend + 'static,
+        TransportReceiver: TransportRecv + 'static,
+        TransportSender: TransportSend + 'static,
         Forwarder: Forward, {
         let (request_send, request_recv) = channel::bounded(1);
         let (response_send, response_recv) = channel::bounded(1);
         let receiver_terminator: Option<Mutex<Box<dyn Terminate>>> =
-            Some(Mutex::new(Box::new(ipc_recv.create_terminator())));
+            Some(Mutex::new(Box::new(transport_recv.create_terminator())));
 
         let receiver_thread = thread::Builder::new()
             .name("receiver multiplexer".into())
-            .spawn(move || receiver_loop::<Forwarder, IpcReceiver>(ipc_recv, request_send, response_send))
+            .spawn(move || receiver_loop::<Forwarder, TransportReceiver>(transport_recv, request_send, response_send))
             .unwrap();
 
         let (multiplexed_send, from_multiplexed_send) = channel::bounded(1);
         let (sender_terminator, recv_sender_terminate) = channel::bounded(1);
         let sender_thread = thread::Builder::new()
             .name("sender multiplexer".into())
-            .spawn(move || sender_loop(ipc_send, from_multiplexed_send, recv_sender_terminate))
+            .spawn(move || sender_loop(transport_send, from_multiplexed_send, recv_sender_terminate))
             .unwrap();
 
         MultiplexResult {
@@ -91,16 +94,16 @@ impl Multiplexer {
     }
 }
 
-fn receiver_loop<Forwarder: Forward, Receiver: IpcRecv>(
-    ipc_recv: Receiver,
+fn receiver_loop<Forwarder: Forward, Receiver: TransportRecv>(
+    transport_recv: Receiver,
     request_send: Sender<Packet>,
     response_send: Sender<Packet>,
 ) {
     loop {
-        let message = match ipc_recv.recv(None) {
+        let message = match transport_recv.recv(None) {
             Err(RecvError::TimeOut) => panic!(),
             Err(RecvError::Termination) => {
-                debug!("ipc_recv is closed in multiplex");
+                debug!("transport_recv is closed in multiplex");
                 return
             }
             Ok(data) => data,
@@ -119,7 +122,11 @@ fn receiver_loop<Forwarder: Forward, Receiver: IpcRecv>(
     }
 }
 
-fn sender_loop(ipc_sender: impl IpcSend, from_multiplexed_send: Receiver<Packet>, from_terminator: Receiver<()>) {
+fn sender_loop(
+    transport_sender: impl TransportSend,
+    from_multiplexed_send: Receiver<Packet>,
+    from_terminator: Receiver<()>,
+) {
     loop {
         let data = select! {
             recv(from_multiplexed_send) -> msg => match msg {
@@ -139,7 +146,7 @@ fn sender_loop(ipc_sender: impl IpcSend, from_multiplexed_send: Receiver<Packet>
                 }
             },
         };
-        ipc_sender.send(&data.into_vec());
+        transport_sender.send(&data.into_vec());
     }
 }
 

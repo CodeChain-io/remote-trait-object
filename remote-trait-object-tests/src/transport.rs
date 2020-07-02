@@ -15,11 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crossbeam::channel::{bounded, Receiver, Select, SelectTimeoutError, Sender};
-use remote_trait_object::ipc::*;
+use remote_trait_object::transport::*;
 
 pub struct IntraSend(Sender<Vec<u8>>);
 
-impl IpcSend for IntraSend {
+impl TransportSend for IntraSend {
     fn send(&self, data: &[u8]) {
         self.0.send(data.to_vec()).unwrap();
     }
@@ -41,7 +41,7 @@ impl Terminate for Terminator {
     }
 }
 
-impl IpcRecv for IntraRecv {
+impl TransportRecv for IntraRecv {
     type Terminator = Terminator;
 
     fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError> {
@@ -83,14 +83,14 @@ impl IpcRecv for IntraRecv {
     }
 }
 
-pub struct IpcEnds {
+pub struct TransportEnds {
     pub send1: IntraSend,
     pub recv1: IntraRecv,
     pub send2: IntraSend,
     pub recv2: IntraRecv,
 }
 
-pub fn create() -> IpcEnds {
+pub fn create() -> TransportEnds {
     let (a_sender, a_receiver) = bounded(256);
     let (a_termination_sender, a_termination_receiver) = bounded(1);
     let (b_sender, b_receiver) = bounded(256);
@@ -110,7 +110,7 @@ pub fn create() -> IpcEnds {
         terminator: b_termination_sender,
     };
 
-    IpcEnds {
+    TransportEnds {
         recv1,
         send1,
         recv2,

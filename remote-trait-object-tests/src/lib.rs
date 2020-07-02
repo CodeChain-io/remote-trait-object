@@ -22,6 +22,6 @@ extern crate remote_trait_object_macro as rto_macro;
 mod test_concurrent_ping;
 //#[cfg(test)]
 //mod test_module;
-pub mod ipc;
 #[cfg(test)]
 mod test_store;
+pub mod transport;
