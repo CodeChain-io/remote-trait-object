@@ -18,6 +18,8 @@ use crate::forwarder::ServiceObjectId;
 use crate::service::MethodId;
 use std::fmt;
 
+const UNDECIDED_SLOT: u32 = 4444;
+
 #[derive(Debug, Copy, Clone)]
 pub struct SlotId(u32);
 
@@ -42,9 +44,8 @@ impl SlotId {
         Self(num)
     }
 
-    // FIXME: Please use unique slot id
     pub fn new_request() -> Self {
-        Self(1001)
+        Self(UNDECIDED_SLOT)
     }
 
     pub fn get_type(&self) -> SlotType {
