@@ -61,12 +61,14 @@ impl ServiceForwarder {
             self.delete(object_id);
             Vec::new()
         } else {
-            let handlers = self.service_objects.read();
             crate::service::serde_support::port_thread_local::set_port(self.port.read().clone());
-            let result = handlers
-                .get(&object_id)
-                .unwrap_or_else(|| panic!("Fail to find {} from ServiceForwarder", object_id))
-                .dispatch_and_call(method, data);
+            let handler = Arc::clone(
+                self.service_objects
+                    .read()
+                    .get(&object_id)
+                    .unwrap_or_else(|| panic!("Fail to find {} from ServiceForwarder", object_id)),
+            );
+            let result = handler.dispatch_and_call(method, data);
             crate::service::serde_support::port_thread_local::remove_port();
             result
         }
