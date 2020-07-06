@@ -102,74 +102,81 @@ impl<'de, P: ?Sized + Service, T: ToRemote<P>> Deserialize<'de> for ServicePoint
 
 #[cfg(test)]
 mod tests {
-    mod mock {
-        use super::super::port_thread_local;
-        use crate::port::null_weak_port;
-
-        pub fn set_global_port() {
-            port_thread_local::set_port(null_weak_port());
-        }
-    }
-
     mod serialize_test {
         use super::super::SArc;
-        use super::mock;
-        use crate::{ToDispatcher, HandleToExchange, Port, Service, Dispatch};
+        use crate::service::ServiceObjectId;
+        use crate::*;
+        use std::sync::atomic::{AtomicU32, Ordering};
         use std::sync::{Arc, Weak};
 
-        trait Foo: Service {
-            fn get_handle_to_exchange(&self) -> HandleToExchange;
+        #[derive(Debug)]
+        pub struct MockPort {
+            count: AtomicU32,
         }
 
-        struct FooImpl {
-            pub handle_to_exchange: HandleToExchange,
-        }
-        impl FooImpl {
-            pub fn new(handle: u32) -> Self {
-                Self {
-                    handle_to_exchange: HandleToExchange(handle),
-                }
+        impl Port for MockPort {
+            fn call(&self, _packet: PacketView) -> Packet {
+                unimplemented!()
+            }
+
+            fn register(&self, _service_object: Arc<dyn Dispatch>) -> HandleToExchange {
+                self.count.fetch_add(1, Ordering::SeqCst);
+                HandleToExchange(123)
+            }
+
+            fn delete_request(&self, _id: ServiceObjectId) {
+                unimplemented!()
             }
         }
-        impl Foo for FooImpl {
-            fn get_handle_to_exchange(&self) -> HandleToExchange {
-                self.handle_to_exchange
-            }
-        }
+
+        trait Foo: Service {}
+
+        struct FooImpl;
+        impl Foo for FooImpl {}
         impl Service for FooImpl {}
+        impl Dispatch for FooImpl {
+            fn dispatch_and_call(&self, _method: MethodId, _args: &[u8]) -> Vec<u8> {
+                unimplemented!()
+            }
+        }
 
         impl ToDispatcher<dyn Foo> for Arc<dyn Foo> {
             fn to_dispatcher(self) -> Arc<dyn Dispatch> {
-                unimplemented!()
+                Arc::new(FooImpl)
             }
         }
 
         /// This test checks SArc<dyn Test> is serialized as HandleToExchange or not
         #[test]
         fn test_serialize() {
-            mock::set_global_port();
+            let port = Arc::new(MockPort {
+                count: AtomicU32::new(0),
+            });
+            let weak_port = Arc::downgrade(&port) as Weak<dyn Port>;
+            super::super::port_thread_local::set_port(weak_port);
 
             {
-                let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl::new(3));
+                let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl);
                 let foo_sarc = SArc::new(foo_arc.clone());
                 let bytes = serde_cbor::to_vec(&foo_sarc).unwrap();
                 let handle_to_exchange: HandleToExchange = serde_cbor::from_slice(&bytes).unwrap();
-                assert_eq!(handle_to_exchange.0, 3);
+                assert_eq!(handle_to_exchange.0, 123);
+                assert_eq!(port.count.load(Ordering::SeqCst), 1);
             }
 
             {
-                let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl::new(23));
+                let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl);
                 let foo_sarc = SArc::new(foo_arc.clone());
                 let bytes = serde_cbor::to_vec(&foo_sarc).unwrap();
                 let handle_to_exchange: HandleToExchange = serde_cbor::from_slice(&bytes).unwrap();
-                assert_eq!(handle_to_exchange.0, 23);
+                assert_eq!(handle_to_exchange.0, 123);
+                assert_eq!(port.count.load(Ordering::SeqCst), 2);
             }
         }
     }
 
     mod deserialize_test {
         use super::super::SArc;
-        use super::mock;
         use crate::{HandleToExchange, Port, Service, ToRemote};
         use std::sync::{Arc, Weak};
 
@@ -195,7 +202,7 @@ mod tests {
 
         #[test]
         fn test_deserialize() {
-            mock::set_global_port();
+            super::super::port_thread_local::set_port(crate::port::null_weak_port());
 
             {
                 let handle_to_exchange = HandleToExchange(32);
