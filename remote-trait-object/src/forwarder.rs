@@ -24,6 +24,7 @@ use std::sync::{Arc, Weak};
 
 pub type ServiceObjectId = u32;
 pub const DELETE_REQUEST: crate::service::MethodId = std::u32::MAX;
+pub const INITIAL_SERVICE_OBJECT_ID: ServiceObjectId = 0;
 
 pub struct ServiceForwarder {
     service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>>,
@@ -42,6 +43,24 @@ impl ServiceForwarder {
         Self {
             service_objects: Default::default(),
             available_ids: RwLock::new((0u32..100).collect()),
+            port: RwLock::new(null_weak_port()),
+        }
+    }
+
+    pub fn with_initial_service(service_object: Arc<dyn Dispatch>) -> Self {
+        let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> = Default::default();
+        service_objects.write().insert(INITIAL_SERVICE_OBJECT_ID, service_object);
+
+        let mut available_ids = VecDeque::new();
+        for i in 0u32..100 {
+            if i != INITIAL_SERVICE_OBJECT_ID {
+                available_ids.push_back(i);
+            }
+        }
+
+        Self {
+            service_objects,
+            available_ids: RwLock::new(available_ids),
             port: RwLock::new(null_weak_port()),
         }
     }

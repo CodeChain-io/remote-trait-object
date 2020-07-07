@@ -18,6 +18,7 @@ use crate::packet::{PacketView, SlotType};
 use crate::port::{client::Client, server::Server, BasicPort, Port};
 use crate::transport::multiplex::{self, ForwardResult, MultiplexResult, Multiplexer};
 use crate::transport::{TransportRecv, TransportSend};
+use crate::{Service, ToDispatcher, ToRemote};
 use std::sync::{Arc, Weak};
 
 pub struct Context {
@@ -43,6 +44,38 @@ impl Context {
             server: Some(server),
             port: Some(port),
         }
+    }
+
+    pub fn with_initial_service<
+        S: TransportSend + 'static,
+        R: TransportRecv + 'static,
+        A: ?Sized + Service,
+        B: ?Sized + Service,
+        P: ToRemote<B>,
+    >(
+        transport_send: S,
+        transport_recv: R,
+        initial_service: impl ToDispatcher<A>,
+    ) -> (Self, P) {
+        let MultiplexResult {
+            multiplexer,
+            request_recv,
+            response_recv,
+            multiplexed_send,
+        } = Multiplexer::multiplex::<R, S, PacketForward>(transport_send, transport_recv);
+        let client = Client::new(multiplexed_send.clone(), response_recv);
+        let port = BasicPort::with_initial_service(client, initial_service.to_dispatcher());
+        let server = Server::new(port.get_registry(), multiplexed_send, request_recv);
+
+        let initial_handle = crate::service::HandleToExchange(crate::forwarder::INITIAL_SERVICE_OBJECT_ID);
+
+        let ctx = Context {
+            multiplexer: Some(multiplexer),
+            server: Some(server),
+            port: Some(port),
+        };
+        let initial_service = crate::import_service(&ctx, initial_handle);
+        (ctx, initial_service)
     }
 
     pub fn get_port(&self) -> Weak<dyn Port> {

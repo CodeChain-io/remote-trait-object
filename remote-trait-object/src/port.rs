@@ -82,6 +82,17 @@ impl BasicPort {
         arc
     }
 
+    pub fn with_initial_service(client: Client, initial_service: Arc<dyn Dispatch>) -> Arc<Self> {
+        let arc = Arc::new(Self {
+            registry: Arc::new(ServiceForwarder::with_initial_service(initial_service)),
+            client: Some(client),
+            no_drop: AtomicBool::new(false),
+        });
+        let arc2 = arc.clone() as Arc<dyn Port>;
+        arc.registry.set_port(Arc::downgrade(&arc2));
+        arc
+    }
+
     pub fn get_registry(&self) -> Arc<ServiceForwarder> {
         self.registry.clone()
     }
