@@ -22,7 +22,7 @@ pub mod serde_support;
 use crate::forwarder::ServiceObjectId;
 use crate::port::Port;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Weak};
+use std::sync::Weak;
 
 pub type MethodId = u32;
 

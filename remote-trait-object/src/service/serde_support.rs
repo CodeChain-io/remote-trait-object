@@ -16,36 +16,37 @@
 
 use super::export_import::*;
 use super::*;
-use parking_lot::RwLock;
+use crate::{Dispatch, HandleToExchange};
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
+use std::marker::PhantomData;
+use std::sync::Arc;
 
-pub struct ServicePointer<T, P: ?Sized + Service> {
-    value: std::cell::Cell<Option<T>>,
-    /// This is for the generic Serialize/Deserialize implementation.
-    _p: std::marker::PhantomData<P>,
+enum ExportOrImport {
+    Export(Arc<dyn Dispatch>),
+    Import(HandleToExchange, Weak<dyn Port>),
 }
 
-impl<T, P: ?Sized + Service> ServicePointer<T, P> {
-    pub fn new(value: T) -> Self {
-        ServicePointer {
-            value: std::cell::Cell::new(Some(value)),
-            _p: std::marker::PhantomData,
+pub struct ServiceRef<T: ?Sized + Service> {
+    service: ExportOrImport,
+    _marker: PhantomData<T>,
+}
+
+impl<T: ?Sized + Service> ServiceRef<T> {
+    pub fn export(service: impl ToDispatcher<T>) -> Self {
+        Self {
+            service: ExportOrImport::Export(service.to_dispatcher()),
+            _marker: PhantomData,
         }
     }
 
-    pub(crate) fn take(&self) -> T {
-        self.value.take().unwrap()
-    }
-
-    pub fn unwrap(self) -> T {
-        self.value.take().unwrap()
+    pub fn import<P: ToRemote<T>>(self) -> P {
+        match self.service {
+            ExportOrImport::Import(handle, port) => P::to_remote(port, handle),
+            _ => panic!("You must call import() on an imported ServiceRef"),
+        }
     }
 }
-
-pub type SBox<T> = ServicePointer<Box<T>, T>;
-pub type SArc<T> = ServicePointer<Arc<T>, T>;
-pub type SRwLock<T> = ServicePointer<Arc<RwLock<T>>, T>;
 
 /// This manages thread-local pointer of the port, which will be used in serialization of
 /// service objects wrapped in the S* pointers. Cuttently it is the only way to deliver the port
@@ -81,29 +82,37 @@ pub(crate) mod port_thread_local {
     }
 }
 
-impl<P: ?Sized + Service, T: ToDispatcher<P>> Serialize for ServicePointer<T, P> {
+impl<T: ?Sized + Service> Serialize for ServiceRef<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer, {
-        let service = self.take();
-        let handle = port_thread_local::get_port().upgrade().unwrap().register(T::to_dispatcher(service));
-        handle.serialize(serializer)
+        let error = "You must not de/serialize ServiceRef by yourself. If you not, this is a bug.";
+        if let ExportOrImport::Export(service) = &self.service {
+            debug_assert_eq!(Arc::strong_count(service), 1);
+            let handle = port_thread_local::get_port().upgrade().expect(error).register(Arc::clone(service));
+            handle.serialize(serializer)
+        } else {
+            panic!(error)
+        }
     }
 }
 
-impl<'de, P: ?Sized + Service, T: ToRemote<P>> Deserialize<'de> for ServicePointer<T, P> {
+impl<'de, T: ?Sized + Service> Deserialize<'de> for ServiceRef<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>, {
         let handle = HandleToExchange::deserialize(deserializer)?;
-        Ok(ServicePointer::new(T::to_remote(port_thread_local::get_port(), handle)))
+        Ok(ServiceRef {
+            service: ExportOrImport::Import(handle, port_thread_local::get_port()),
+            _marker: std::marker::PhantomData,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     mod serialize_test {
-        use super::super::SArc;
+        use super::super::ServiceRef;
         use crate::service::ServiceObjectId;
         use crate::*;
         use std::sync::atomic::{AtomicU32, Ordering};
@@ -157,7 +166,7 @@ mod tests {
 
             {
                 let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl);
-                let foo_sarc = SArc::new(foo_arc.clone());
+                let foo_sarc = ServiceRef::export(foo_arc.clone());
                 let bytes = serde_cbor::to_vec(&foo_sarc).unwrap();
                 let handle_to_exchange: HandleToExchange = serde_cbor::from_slice(&bytes).unwrap();
                 assert_eq!(handle_to_exchange.0, 123);
@@ -166,7 +175,7 @@ mod tests {
 
             {
                 let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl);
-                let foo_sarc = SArc::new(foo_arc.clone());
+                let foo_sarc = ServiceRef::export(foo_arc.clone());
                 let bytes = serde_cbor::to_vec(&foo_sarc).unwrap();
                 let handle_to_exchange: HandleToExchange = serde_cbor::from_slice(&bytes).unwrap();
                 assert_eq!(handle_to_exchange.0, 123);
@@ -176,9 +185,9 @@ mod tests {
     }
 
     mod deserialize_test {
-        use super::super::SArc;
+        use super::super::ServiceRef;
         use crate::{HandleToExchange, Port, Service, ToRemote};
-        use std::sync::{Arc, Weak};
+        use std::sync::Weak;
 
         trait Foo: Service {
             fn get_handle_to_exchange(&self) -> HandleToExchange;
@@ -192,9 +201,9 @@ mod tests {
             }
         }
         impl Service for FooImpl {}
-        impl ToRemote<dyn Foo> for Arc<dyn Foo> {
-            fn to_remote(_port: Weak<dyn Port>, handle: HandleToExchange) -> Arc<dyn Foo> {
-                Arc::new(FooImpl {
+        impl ToRemote<dyn Foo> for Box<dyn Foo> {
+            fn to_remote(_port: Weak<dyn Port>, handle: HandleToExchange) -> Box<dyn Foo> {
+                Box::new(FooImpl {
                     handle_to_exchange: handle,
                 })
             }
@@ -207,15 +216,15 @@ mod tests {
             {
                 let handle_to_exchange = HandleToExchange(32);
                 let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
-                let dyn_foo: SArc<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
-                assert_eq!(dyn_foo.unwrap().get_handle_to_exchange().0, 32);
+                let dyn_foo: ServiceRef<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
+                assert_eq!(dyn_foo.import::<Box<dyn Foo>>().get_handle_to_exchange().0, 32);
             }
 
             {
                 let handle_to_exchange = HandleToExchange(2);
                 let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
-                let dyn_foo: SArc<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
-                assert_eq!(dyn_foo.unwrap().get_handle_to_exchange().0, 2);
+                let dyn_foo: ServiceRef<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
+                assert_eq!(dyn_foo.import::<Box<dyn Foo>>().get_handle_to_exchange().0, 2);
             }
         }
     }

@@ -85,16 +85,16 @@ fn test_order2() {
         }));
         let card_to_give = card.clone() as Arc<RwLock<dyn CreditCard>>;
         assert_eq!(
-            store.order_pizza_credit_card(Pizza::Veggie, SRwLock::new(card_to_give.clone())),
+            store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::export(card_to_give.clone())),
             "Here's a delicious veggie pizza"
         );
         assert_eq!(
-            store.order_pizza_credit_card(Pizza::Veggie, SRwLock::new(card_to_give.clone())),
+            store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::export(card_to_give.clone())),
             "Not enough balance"
         );
         card.write().balance += 10;
         assert_eq!(
-            store.order_pizza_credit_card(Pizza::Veggie, SRwLock::new(card_to_give)),
+            store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::export(card_to_give)),
             "Here's a delicious veggie pizza"
         );
     }
@@ -119,7 +119,7 @@ fn test_order3() {
             threads.push(std::thread::spawn(move || {
                 start.wait();
                 assert_eq!(
-                    store.order_pizza_credit_card(Pizza::Pineapple, SRwLock::new(card_to_give)),
+                    store.order_pizza_credit_card(Pizza::Pineapple, ServiceRef::export(card_to_give)),
                     "Here's a delicious pineapple pizza"
                 );
             }));

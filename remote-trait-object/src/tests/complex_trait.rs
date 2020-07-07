@@ -16,16 +16,16 @@
 
 use super::TestPort;
 use crate as remote_trait_object;
-use crate::{Port, SArc, Service};
+use crate::{Port, Service, ServiceRef};
 use crate::{ToDispatcher, ToRemote};
 use remote_trait_object_macro as rto_macro;
 use std::sync::{Arc, Mutex};
 
 #[rto_macro::service]
 trait A: Service {
-    fn service_object_as_argument(&self, b: SArc<dyn B>);
-    fn service_object_as_return(&self) -> SArc<dyn B>;
-    fn recursive_service_object(&self) -> SArc<dyn A>;
+    fn service_object_as_argument(&self, b: ServiceRef<dyn B>);
+    fn service_object_as_return(&self) -> ServiceRef<dyn B>;
+    fn recursive_service_object(&self) -> ServiceRef<dyn A>;
     fn get_recursion_count(&self) -> u32;
 }
 
@@ -54,8 +54,8 @@ impl SimpleA {
 }
 
 impl A for SimpleA {
-    fn service_object_as_argument(&self, b: SArc<dyn B>) {
-        let b = b.unwrap();
+    fn service_object_as_argument(&self, b: ServiceRef<dyn B>) {
+        let b: Box<dyn B> = b.import();
         assert_eq!(0, b.get());
         b.inc();
         b.inc();
@@ -63,14 +63,14 @@ impl A for SimpleA {
         assert_eq!(3, b.get());
     }
 
-    fn service_object_as_return(&self) -> SArc<dyn B> {
-        let b = Arc::new(SimpleB::new());
-        SArc::new(b)
+    fn service_object_as_return(&self) -> ServiceRef<dyn B> {
+        let b = Box::new(SimpleB::new()) as Box<dyn B>;
+        ServiceRef::export(b)
     }
 
-    fn recursive_service_object(&self) -> SArc<dyn A> {
-        let a = Arc::new(SimpleA::with_recursion_count(self.recursion_count + 1));
-        SArc::new(a)
+    fn recursive_service_object(&self) -> ServiceRef<dyn A> {
+        let a = Box::new(SimpleA::with_recursion_count(self.recursion_count + 1)) as Box<dyn A>;
+        ServiceRef::export(a)
     }
 
     fn get_recursion_count(&self) -> u32 {
@@ -119,7 +119,7 @@ fn service_object_as_return() {
     let port = Arc::new(TestPort::new());
     let remote_a = create_remote_a(port.clone());
 
-    let remote_b = remote_a.service_object_as_return().unwrap();
+    let remote_b: Box<dyn B> = remote_a.service_object_as_return().import();
     assert_eq!(remote_b.get(), 0);
     remote_b.inc();
     assert_eq!(remote_b.get(), 1);
@@ -138,8 +138,8 @@ fn service_object_as_argument() {
     let port = Arc::new(TestPort::new());
     let remote_a = create_remote_a(port.clone());
 
-    let service_object_b = Arc::new(SimpleB::new());
-    remote_a.service_object_as_argument(SArc::new(service_object_b));
+    let service_object_b = Box::new(SimpleB::new()) as Box<dyn B>;
+    remote_a.service_object_as_argument(ServiceRef::export(service_object_b));
 
     drop(remote_a);
     drop(port)
@@ -156,12 +156,12 @@ fn recursive_service_object() {
 
     for i in 0..10 {
         assert_eq!(remote_a.get_recursion_count(), i);
-        remote_a = remote_a.recursive_service_object().unwrap();
+        remote_a = remote_a.recursive_service_object().import();
         remote_as.push(Arc::clone(&remote_a));
     }
     assert_eq!(remote_a.get_recursion_count(), 10);
 
-    let remote_b = remote_a.service_object_as_return().unwrap();
+    let remote_b: Box<dyn B> = remote_a.service_object_as_return().import();
     remote_b.inc();
     assert_eq!(remote_b.get(), 1);
 
