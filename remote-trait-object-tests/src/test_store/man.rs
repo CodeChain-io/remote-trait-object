@@ -46,17 +46,15 @@ fn test_runner(f: impl Fn(Arc<dyn Store>)) {
         send2,
     } = crate::transport::create();
 
-    let (export_send, export_recv) = bounded(100);
     let (signal_send, signal_recv) = bounded(0);
 
     let store_runner = std::thread::Builder::new()
         .name("Store Runner".to_owned())
-        .spawn(move || run_store((send2, recv2), export_send, signal_recv))
+        .spawn(move || run_store((send2, recv2), signal_recv))
         .unwrap();
 
-    let rto_context = Context::new(send1, recv1);
-    let store_handle: HandleToExchange = serde_cbor::from_slice(&export_recv.recv().unwrap()).unwrap();
-    let store = import_service(&rto_context, store_handle);
+    let (_rto_context, store): (Context, Arc<dyn Store>) =
+        Context::with_initial_service(send1, recv1, Box::new(NullServiceImpl) as Box<dyn NullService>);
 
     f(store);
 
