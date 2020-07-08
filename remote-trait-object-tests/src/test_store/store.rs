@@ -16,9 +16,8 @@
 
 use super::types::*;
 use crate::transport::{IntraRecv, IntraSend};
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::Receiver;
 use remote_trait_object::*;
-use std::sync::Arc;
 
 struct MyPizzaStore {
     vat: u32,
@@ -71,13 +70,14 @@ impl Store for MyPizzaStore {
 
 impl Service for MyPizzaStore {}
 
-pub fn run_store(transport: (IntraSend, IntraRecv), export_channel: Sender<Vec<u8>>, end_signal: Receiver<()>) {
+pub fn run_store(transport: (IntraSend, IntraRecv), end_signal: Receiver<()>) {
     let (transport_send, transport_recv) = transport;
-    let rto_context = Context::new(transport_send, transport_recv);
-    let store = Arc::new(MyPizzaStore {
-        vat: 1,
-    }) as Arc<dyn Store>;
-    let handle = export_service(&rto_context, store);
-    export_channel.send(serde_cbor::to_vec(&handle).unwrap()).unwrap();
+    let (_rto_context, _null): (Context, Box<dyn NullService>) = Context::with_initial_service(
+        transport_send,
+        transport_recv,
+        Box::new(MyPizzaStore {
+            vat: 1,
+        }) as Box<dyn Store>,
+    );
     end_signal.recv().unwrap();
 }
