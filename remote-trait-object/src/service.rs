@@ -16,6 +16,7 @@
 
 pub mod export_import;
 pub mod id;
+mod null;
 pub mod remote;
 pub mod serde_support;
 
@@ -24,6 +25,7 @@ use crate::port::Port;
 use serde::{Deserialize, Serialize};
 use std::sync::Weak;
 
+pub use null::{NullService, NullServiceImpl};
 pub type MethodId = u32;
 
 /// This represents transportable identifier of the service object
