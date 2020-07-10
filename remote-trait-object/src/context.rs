@@ -89,6 +89,11 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
+        // We have to clean all registered service, as some might hold another remote service inside, which refers this context's port.
+        // For such case, we have to make them be dropped first before we unwrap the Arc<BasicPort>
+        self.port.as_ref().unwrap().set_no_drop();
+        self.port.as_ref().unwrap().clear_registry();
+
         self.multiplexer.take().expect("It becomes None only when the context is dropped.").shutdown();
         // Shutdown server after multiplexer
         self.server.take().expect("It becomes None only when the context is dropped.").shutdown();

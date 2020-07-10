@@ -97,6 +97,10 @@ impl BasicPort {
         self.registry.clone()
     }
 
+    pub fn clear_registry(&self) {
+        self.registry.clear();
+    }
+
     /// Please call shutdown after Multiplexer::shutdown
     pub fn shutdown(mut self) {
         self.client.take().unwrap().shutdown();
