@@ -130,3 +130,35 @@ fn test_order3() {
     }
     test_runner(f);
 }
+
+#[test]
+fn drop_service_which_holds_remote() {
+    let crate::transport::TransportEnds {
+        recv1,
+        send1,
+        recv2,
+        send2,
+    } = crate::transport::create();
+
+    let (signal_send, signal_recv) = bounded(0);
+
+    let store_runner = std::thread::Builder::new()
+        .name("Store Runner".to_owned())
+        .spawn(move || run_store((send2, recv2), signal_recv))
+        .unwrap();
+
+    let (rto_context, mut store): (Context, Box<dyn Store>) =
+        Context::with_initial_service(send1, recv1, Box::new(NullServiceImpl) as Box<dyn NullService>);
+
+    let card = Box::new(MyCreditCard {
+        balance: 0,
+    }) as Box<dyn CreditCard>;
+    store.register_card(ServiceRef::export(card));
+
+    signal_send.send(()).unwrap();
+    store_runner.join().unwrap();
+
+    rto_context.disable_garbage_collection();
+    // This must not fail
+    drop(store);
+}

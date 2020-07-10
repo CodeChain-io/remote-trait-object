@@ -21,6 +21,7 @@ use remote_trait_object::*;
 
 struct MyPizzaStore {
     vat: u32,
+    registered_card: Option<Box<dyn CreditCard>>,
 }
 
 impl MyPizzaStore {
@@ -66,6 +67,10 @@ impl Store for MyPizzaStore {
             Err(_) => "Not enough balance".to_owned(),
         }
     }
+
+    fn register_card(&mut self, credit_card: ServiceRef<dyn CreditCard>) {
+        self.registered_card.replace(credit_card.import());
+    }
 }
 
 impl Service for MyPizzaStore {}
@@ -77,6 +82,7 @@ pub fn run_store(transport: (IntraSend, IntraRecv), end_signal: Receiver<()>) {
         transport_recv,
         Box::new(MyPizzaStore {
             vat: 1,
+            registered_card: None,
         }) as Box<dyn Store>,
     );
     end_signal.recv().unwrap();
