@@ -82,6 +82,10 @@ impl Context {
         Arc::downgrade(&self.port.clone().expect("It becomes None only when the context is dropped.")) as Weak<dyn Port>
     }
 
+    pub fn clear_service_registry(&mut self) {
+        self.port.as_mut().unwrap().clear_registry();
+    }
+
     pub fn disable_garbage_collection(&self) {
         self.port.as_ref().expect("It becomes None only when the context is dropped.").set_no_drop();
     }
