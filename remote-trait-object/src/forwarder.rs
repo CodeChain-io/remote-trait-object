@@ -93,6 +93,11 @@ impl ServiceForwarder {
         }
     }
 
+    pub fn clear(&self) {
+        self.service_objects.write().clear();
+        // we don't restore available_ids here becuase clear() will be called in termination phase
+    }
+
     fn delete(&self, id: ServiceObjectId) {
         self.service_objects.write().remove(&id).unwrap();
         self.available_ids.write().push_back(id);
