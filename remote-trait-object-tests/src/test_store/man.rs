@@ -38,7 +38,7 @@ impl CreditCard for MyCreditCard {
 
 impl Service for MyCreditCard {}
 
-fn test_runner(f: impl Fn(Arc<dyn Store>)) {
+fn test_runner(f: impl Fn(Box<dyn Store>)) {
     let crate::transport::TransportEnds {
         recv1,
         send1,
@@ -53,7 +53,7 @@ fn test_runner(f: impl Fn(Arc<dyn Store>)) {
         .spawn(move || run_store((send2, recv2), signal_recv))
         .unwrap();
 
-    let (_rto_context, store): (Context, Arc<dyn Store>) =
+    let (_rto_context, store): (Context, Box<dyn Store>) =
         Context::with_initial_service(send1, recv1, Box::new(NullServiceImpl) as Box<dyn NullService>);
 
     f(store);
@@ -64,7 +64,7 @@ fn test_runner(f: impl Fn(Arc<dyn Store>)) {
 
 #[test]
 fn test_order1() {
-    fn f(store: Arc<dyn Store>) {
+    fn f(store: Box<dyn Store>) {
         assert_eq!(store.order_coke("Cherry", 4), "Here's a Cherry coke");
         assert_eq!(store.order_coke("Cherry", 3), "Here's a Cherry coke");
         assert_eq!(store.order_coke("Cherry", 2), "Not enough money");
@@ -77,7 +77,7 @@ fn test_order1() {
 
 #[test]
 fn test_order2() {
-    fn f(store: Arc<dyn Store>) {
+    fn f(store: Box<dyn Store>) {
         let card = Arc::new(RwLock::new(MyCreditCard {
             balance: 11,
         }));
@@ -101,7 +101,7 @@ fn test_order2() {
 
 #[test]
 fn test_order3() {
-    fn f(store: Arc<dyn Store>) {
+    fn f(store: Box<dyn Store>) {
         let n = 64;
         let card = Arc::new(RwLock::new(MyCreditCard {
             balance: 11 * n as u32,
@@ -110,6 +110,7 @@ fn test_order3() {
         let start = Arc::new(Barrier::new(n));
         let mut threads = Vec::new();
 
+        let store: Arc<dyn Store> = Arc::from(store);
         for _ in 0..n {
             let store = store.clone();
             let start = start.clone();
