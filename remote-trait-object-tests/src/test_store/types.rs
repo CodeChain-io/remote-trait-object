@@ -34,4 +34,5 @@ pub trait Store: Service {
     fn order_pizza(&self, menu: Pizza, money: u32) -> String;
     fn order_coke(&self, flavor: &str, money: u32) -> String;
     fn order_pizza_credit_card(&self, menu: Pizza, credit_card: ServiceRef<dyn CreditCard>) -> String;
+    fn register_card(&mut self, credit_card: ServiceRef<dyn CreditCard>);
 }
