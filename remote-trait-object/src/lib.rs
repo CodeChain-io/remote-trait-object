@@ -29,7 +29,7 @@ mod service;
 mod tests;
 pub mod transport;
 
-pub use context::Context;
+pub use context::{Config, Context};
 pub use packet::{Packet, PacketView, SlotId};
 pub use port::Port;
 pub use service::export_import::*;

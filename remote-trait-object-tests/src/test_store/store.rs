@@ -78,6 +78,7 @@ impl Service for MyPizzaStore {}
 pub fn run_store(transport: (IntraSend, IntraRecv), end_signal: Receiver<()>) {
     let (transport_send, transport_recv) = transport;
     let (_rto_context, _null): (Context, Box<dyn NullService>) = Context::with_initial_service(
+        Config::default_setup(),
         transport_send,
         transport_recv,
         Box::new(MyPizzaStore {

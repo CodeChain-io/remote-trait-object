@@ -15,8 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::transport::{IntraRecv, IntraSend, TransportEnds};
-use remote_trait_object::Context;
-use remote_trait_object::Packet;
+use remote_trait_object::{Config, Context, Packet};
 use std::sync::mpsc;
 use std::sync::{Arc, Barrier};
 use std::thread;
@@ -53,7 +52,7 @@ fn ping() {
 
         let _ping_module = create_ping_module(send2, recv2, Arc::clone(&barrier));
 
-        let cmd_to_ping_rto = Context::new(send1, recv1);
+        let cmd_to_ping_rto = Context::new(Config::default_setup(), send1, recv1);
         let mut handles = Vec::new();
 
         for i in 0..number_of_calls {
@@ -80,7 +79,7 @@ fn ping() {
 }
 
 fn create_ping_module(transport_send: IntraSend, transport_recv: IntraRecv, barrier: Arc<Barrier>) -> Context {
-    let cmd_rto = Context::new(transport_send, transport_recv);
+    let cmd_rto = Context::new(Config::default_setup(), transport_send, transport_recv);
     let port = cmd_rto.get_port().upgrade().unwrap();
     let _handle_to_export = port.register(Arc::new(move |_method: u32, _args: &[u8]| {
         // Wait until barrier.wait is called in concurrently

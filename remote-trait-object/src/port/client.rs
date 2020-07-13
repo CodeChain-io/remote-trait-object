@@ -16,19 +16,12 @@
 
 use crate::packet::{Packet, PacketView, SlotId};
 use crate::queue::Queue;
+use crate::Config;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{bounded, Receiver, RecvError, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::time;
-
-#[cfg(debug_assertions)]
-const TIMEOUT: std::time::Duration = std::time::Duration::from_millis(1_000_000);
-#[cfg(not(debug_assertions))]
-const TIMEOUT: std::time::Duration = std::time::Duration::from_millis(50);
-
-// FIXME: read from config
-const CALLSLOT_SIZE: u32 = 100;
 
 /// CallSlot represents an instance of call to the another module
 #[derive(Debug)]
@@ -39,6 +32,7 @@ struct CallSlot {
 
 #[derive(Debug)]
 pub struct Client {
+    config: Config,
     call_slots: Arc<Queue<CallSlot>>,
     transport_send: Sender<Packet>,
     receiver_thread: Option<thread::JoinHandle<()>>,
@@ -46,9 +40,9 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(transport_send: Sender<Packet>, transport_recv: Receiver<Packet>) -> Self {
+    pub fn new(config: Config, transport_send: Sender<Packet>, transport_recv: Receiver<Packet>) -> Self {
         let (joined_event_sender, joined_event_receiver) = bounded(1);
-        let callslot_size = SlotId::new(CALLSLOT_SIZE);
+        let callslot_size = SlotId::new(config.call_slots as u32);
         let call_slots = Arc::new(Queue::new(callslot_size.as_usize()));
         let mut to_slot_receivers = Vec::with_capacity(callslot_size.as_usize());
 
@@ -63,11 +57,15 @@ impl Client {
             to_slot_receivers.push(send_to_slot_recv);
         }
 
+        let name = config.name.clone();
+
         Client {
+            config,
             call_slots,
             transport_send,
             receiver_thread: Some(
                 thread::Builder::new()
+                    .name(format!("[{}] client", name))
                     .spawn(move || {
                         if let Err(RecvError) = receive_loop(transport_recv, to_slot_receivers) {
                             // Multiplexer is closed
@@ -81,7 +79,7 @@ impl Client {
     }
 
     pub fn call(&self, packet: PacketView) -> Packet {
-        let slot = self.call_slots.pop(Some(TIMEOUT)).expect("Too many calls on port");
+        let slot = self.call_slots.pop(Some(self.config.call_timeout)).expect("Too many calls on port");
 
         let packet = {
             let mut packet = packet.to_owned();
