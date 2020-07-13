@@ -36,6 +36,9 @@ impl Handle {
 impl Drop for Handle {
     /// Dropping handle will be signaled to the exporter, so that it can remove the service object as well.
     fn drop(&mut self) {
-        self.port.upgrade().unwrap().delete_request(self.id);
+        self.port
+            .upgrade()
+            .expect("You must drop the remote service before the RTO context is dropped")
+            .delete_request(self.id);
     }
 }
