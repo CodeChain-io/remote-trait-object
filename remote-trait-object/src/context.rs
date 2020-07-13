@@ -19,7 +19,28 @@ use crate::port::{client::Client, server::Server, BasicPort, Port};
 use crate::transport::multiplex::{self, ForwardResult, MultiplexResult, Multiplexer};
 use crate::transport::{TransportRecv, TransportSend};
 use crate::{Service, ToDispatcher, ToRemote};
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Weak};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Config {
+    /// This will be appended to the names of various threads spawned by RTO, for an easy debug.
+    pub name: String,
+    pub server_threads: usize,
+    pub call_slots: usize,
+    pub call_timeout: std::time::Duration,
+}
+
+impl Config {
+    pub fn default_setup() -> Self {
+        Self {
+            name: "my rto".to_owned(),
+            server_threads: 8,
+            call_slots: 1024,
+            call_timeout: std::time::Duration::from_millis(1000),
+        }
+    }
+}
 
 pub struct Context {
     multiplexer: Option<Multiplexer>,
@@ -28,16 +49,20 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new<S: TransportSend + 'static, R: TransportRecv + 'static>(transport_send: S, transport_recv: R) -> Self {
+    pub fn new<S: TransportSend + 'static, R: TransportRecv + 'static>(
+        config: Config,
+        transport_send: S,
+        transport_recv: R,
+    ) -> Self {
         let MultiplexResult {
             multiplexer,
             request_recv,
             response_recv,
             multiplexed_send,
-        } = Multiplexer::multiplex::<R, S, PacketForward>(transport_send, transport_recv);
-        let client = Client::new(multiplexed_send.clone(), response_recv);
+        } = Multiplexer::multiplex::<R, S, PacketForward>(config.clone(), transport_send, transport_recv);
+        let client = Client::new(config.clone(), multiplexed_send.clone(), response_recv);
         let port = BasicPort::new(client);
-        let server = Server::new(port.get_registry(), multiplexed_send, request_recv);
+        let server = Server::new(config, port.get_registry(), multiplexed_send, request_recv);
 
         Context {
             multiplexer: Some(multiplexer),
@@ -53,6 +78,7 @@ impl Context {
         B: ?Sized + Service,
         P: ToRemote<B>,
     >(
+        config: Config,
         transport_send: S,
         transport_recv: R,
         initial_service: impl ToDispatcher<A>,
@@ -62,10 +88,10 @@ impl Context {
             request_recv,
             response_recv,
             multiplexed_send,
-        } = Multiplexer::multiplex::<R, S, PacketForward>(transport_send, transport_recv);
-        let client = Client::new(multiplexed_send.clone(), response_recv);
+        } = Multiplexer::multiplex::<R, S, PacketForward>(config.clone(), transport_send, transport_recv);
+        let client = Client::new(config.clone(), multiplexed_send.clone(), response_recv);
         let port = BasicPort::with_initial_service(client, initial_service.to_dispatcher());
-        let server = Server::new(port.get_registry(), multiplexed_send, request_recv);
+        let server = Server::new(config, port.get_registry(), multiplexed_send, request_recv);
 
         let initial_handle = crate::service::HandleToExchange(crate::forwarder::INITIAL_SERVICE_OBJECT_ID);
 

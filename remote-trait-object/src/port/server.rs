@@ -17,6 +17,7 @@
 use super::types::Handler;
 use crate::packet::Packet;
 use crate::queue::{PopError, Queue};
+use crate::Config;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{self, Receiver, Sender};
 use std::sync::Arc;
@@ -29,14 +30,19 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new<H>(handler: Arc<H>, transport_send: Sender<Packet>, transport_recv: Receiver<Packet>) -> Self
+    pub fn new<H>(
+        config: Config,
+        handler: Arc<H>,
+        transport_send: Sender<Packet>,
+        transport_recv: Receiver<Packet>,
+    ) -> Self
     where
         H: Handler + Send + 'static, {
         let (joined_event_sender, joined_event_receiver) = channel::bounded(1);
         let receiver_thread = thread::Builder::new()
-            .name("port server receiver".into())
+            .name(format!("[{}] port server receiver", config.name))
             .spawn(move || {
-                receiver(handler, transport_send, transport_recv);
+                receiver(config, handler, transport_send, transport_recv);
                 joined_event_sender.send(()).expect("Server will be dropped after thread is joined");
             })
             .unwrap();
@@ -70,11 +76,11 @@ impl Drop for Server {
     }
 }
 
-fn receiver<H>(handler: Arc<H>, transport_send: Sender<Packet>, transport_recv: Receiver<Packet>)
+fn receiver<H>(config: Config, handler: Arc<H>, transport_send: Sender<Packet>, transport_recv: Receiver<Packet>)
 where
     H: Handler + 'static, {
     let received_packets = Arc::new(Queue::new(100));
-    let joiners = create_handler_threads(handler, transport_send, Arc::clone(&received_packets));
+    let joiners = create_handler_threads(config, handler, transport_send, Arc::clone(&received_packets));
 
     while let Ok(request) = transport_recv.recv() {
         received_packets.push(request).expect("Queue will close after this loop");
@@ -88,6 +94,7 @@ where
 }
 
 fn create_handler_threads<H>(
+    config: Config,
     handler: Arc<H>,
     transport_send: Sender<Packet>,
     received_packets: Arc<Queue<Packet>>,
@@ -116,14 +123,13 @@ where
         }
     }
 
-    // FIXME: get thread count from config
-    for i in 0..4 {
+    for i in 0..config.server_threads {
         let packet_queue_ = Arc::clone(&received_packets);
         let transport_send_ = transport_send.clone();
         let handler_ = Arc::clone(&handler);
 
         let join_handle = thread::Builder::new()
-            .name(format!("port server send {}", i))
+            .name(format!("[{}] port server send {}", config.name, i))
             .spawn(move || handler_loop(handler_, transport_send_, packet_queue_))
             .unwrap();
         joins.push(join_handle);
