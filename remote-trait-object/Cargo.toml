@@ -1,6 +1,6 @@
 [package]
 name = "remote-trait-object"
-version = "0.1.4"
+version = "0.2.0"
 authors = ["CodeChain Team <hi@codechain.io>"]
 edition = "2018"
 
@@ -11,7 +11,7 @@ parking_lot = "0.11.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_cbor = "0.11.1"
 linkme = "0.2.1"
+remote-trait-object-macro = { version = "0.2.0", path = "../remote-trait-object-macro"}
 
 [dev-dependencies]
 env_logger = "0.7.1"
-remote-trait-object-macro = { version = "0.1.4", path = "../remote-trait-object-macro"}
