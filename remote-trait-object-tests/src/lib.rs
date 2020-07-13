@@ -16,7 +16,6 @@
 
 #[macro_use]
 extern crate log;
-extern crate remote_trait_object_macro as rto_macro;
 
 #[cfg(test)]
 mod test_concurrent_ping;

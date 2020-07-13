@@ -24,12 +24,12 @@ pub enum Pizza {
     Pineapple,
 }
 
-#[rto_macro::service]
+#[service]
 pub trait CreditCard: Service {
     fn pay(&mut self, money: u32) -> Result<(), ()>;
 }
 
-#[rto_macro::service]
+#[service]
 pub trait Store: Service {
     fn order_pizza(&self, menu: Pizza, money: u32) -> String;
     fn order_coke(&self, flavor: &str, money: u32) -> String;
