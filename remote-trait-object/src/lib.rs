@@ -18,6 +18,7 @@
 extern crate crossbeam;
 #[macro_use]
 extern crate log;
+extern crate remote_trait_object_macro;
 
 mod context;
 mod forwarder;
@@ -42,3 +43,6 @@ pub mod macro_env {
     pub use super::*;
     pub use service::id::{IdMap, MethodIdAtomic, ID_ORDERING, MID_REG};
 }
+
+// Re-export macro
+pub use remote_trait_object_macro::*;
