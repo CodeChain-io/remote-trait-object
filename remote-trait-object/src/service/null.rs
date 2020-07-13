@@ -21,7 +21,11 @@ use super::*;
 /// but such initial service is needed by only one side.
 pub trait NullService: Service {}
 
-pub struct NullServiceImpl;
+pub fn create_null_service() -> Box<dyn NullService> {
+    Box::new(NullServiceImpl)
+}
+
+struct NullServiceImpl;
 
 impl NullService for NullServiceImpl {}
 

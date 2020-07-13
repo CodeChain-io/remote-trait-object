@@ -53,12 +53,8 @@ fn test_runner(f: impl Fn(Box<dyn Store>)) {
         .spawn(move || run_store((send2, recv2), signal_recv))
         .unwrap();
 
-    let (_rto_context, store): (Context, Box<dyn Store>) = Context::with_initial_service(
-        Config::default_setup(),
-        send1,
-        recv1,
-        Box::new(NullServiceImpl) as Box<dyn NullService>,
-    );
+    let (_rto_context, store): (Context, Box<dyn Store>) =
+        Context::with_initial_service(Config::default_setup(), send1, recv1, create_null_service());
 
     f(store);
 
@@ -151,12 +147,8 @@ fn drop_service_which_holds_remote() {
         .spawn(move || run_store((send2, recv2), signal_recv))
         .unwrap();
 
-    let (rto_context, mut store): (Context, Box<dyn Store>) = Context::with_initial_service(
-        Config::default_setup(),
-        send1,
-        recv1,
-        Box::new(NullServiceImpl) as Box<dyn NullService>,
-    );
+    let (rto_context, mut store): (Context, Box<dyn Store>) =
+        Context::with_initial_service(Config::default_setup(), send1, recv1, create_null_service());
 
     let card = Box::new(MyCreditCard {
         balance: 0,
