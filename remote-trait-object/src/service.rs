@@ -25,7 +25,7 @@ use crate::port::Port;
 use serde::{Deserialize, Serialize};
 use std::sync::Weak;
 
-pub use null::{NullService, NullServiceImpl};
+pub use null::{create_null_service, NullService};
 pub type MethodId = u32;
 
 /// This represents transportable identifier of the service object
