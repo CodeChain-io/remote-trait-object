@@ -36,10 +36,6 @@ pub enum SlotType {
 }
 
 impl SlotId {
-    pub fn empty() -> Self {
-        Self(999)
-    }
-
     pub fn new(num: u32) -> Self {
         Self(num)
     }
