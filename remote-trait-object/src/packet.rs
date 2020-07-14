@@ -71,7 +71,7 @@ impl SlotId {
     }
 }
 
-const SLOT_CALL_OR_RETURN_INDICATOR: SlotId = SlotId(1000);
+const SLOT_CALL_OR_RETURN_INDICATOR: SlotId = SlotId(1024);
 
 // FIXME: repr(C) is not a reliable encoding method.
 // We need to fix the endianness of binary data.
