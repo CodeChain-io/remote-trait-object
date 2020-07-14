@@ -21,6 +21,7 @@ extern crate log;
 mod test_concurrent_ping;
 //#[cfg(test)]
 //mod test_module;
-#[cfg(test)]
 mod test_store;
 pub mod transport;
+
+pub use test_store::{massive_no_export, massive_with_export};
