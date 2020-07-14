@@ -36,7 +36,7 @@ impl Config {
         Self {
             name: "my rto".to_owned(),
             server_threads: 8,
-            call_slots: 1024,
+            call_slots: 512,
             call_timeout: std::time::Duration::from_millis(1000),
         }
     }
