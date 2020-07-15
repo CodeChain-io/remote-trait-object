@@ -1,5 +1,14 @@
 # remote-trait-object
 
+![Build Status](https://github.com/CodeChain-io/intertrait/workflows/ci/badge.svg)
+[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](
+https://github.com/CodeChain-io/remote-trait-object#license)
+[![Cargo](https://img.shields.io/crates/v/remote-trait-object.svg)](
+https://crates.io/crates/remote-trait-object)
+[![Documentation](https://docs.rs/remote-trait-object/badge.svg)](
+https://docs.rs/remote-trait-object)
+[![chat](https://img.shields.io/discord/569610676205781012.svg?logo=discord)](https://discord.gg/xhpdXm7)
+
 A simple and powerful Rust remote method invocation library based on Rust trait objects.
 
 ## License
