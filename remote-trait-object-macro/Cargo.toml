@@ -3,6 +3,11 @@ name = "remote-trait-object-macro"
 version = "0.2.0"
 authors = ["CodeChain Team <hi@codechain.io>"]
 edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Macro that expands a Rust trait to a remote-trait-object service"
+repository = "https://github.com/CodeChain-io/remote-trait-object"
+keywords = ["remote-trait-object"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
 proc-macro-crate = "0.1.4"
