@@ -46,9 +46,9 @@ impl crate::macro_env::Dispatch for NullServiceBoxDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::ToDispatcher<dyn NullService> for Box<dyn NullService> {
-    fn to_dispatcher(self) -> std::sync::Arc<dyn crate::macro_env::Dispatch> {
-        std::sync::Arc::new(NullServiceBoxDispatcher::new(self))
+impl crate::macro_env::IntoService<dyn NullService> for Box<dyn NullService> {
+    fn into_service(self) -> crate::macro_env::ServiceToRegister {
+        crate::macro_env::ServiceToRegister::new(std::sync::Arc::new(NullServiceBoxDispatcher::new(self)))
     }
 }
 pub struct NullServiceArcDispatcher {}
@@ -62,9 +62,9 @@ impl crate::macro_env::Dispatch for NullServiceArcDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::ToDispatcher<dyn NullService> for std::sync::Arc<dyn NullService> {
-    fn to_dispatcher(self) -> std::sync::Arc<dyn crate::macro_env::Dispatch> {
-        std::sync::Arc::new(NullServiceArcDispatcher::new(self))
+impl crate::macro_env::IntoService<dyn NullService> for std::sync::Arc<dyn NullService> {
+    fn into_service(self) -> crate::macro_env::ServiceToRegister {
+        crate::macro_env::ServiceToRegister::new(std::sync::Arc::new(NullServiceArcDispatcher::new(self)))
     }
 }
 pub struct NullServiceRwLockDispatcher {}
@@ -78,9 +78,9 @@ impl crate::macro_env::Dispatch for NullServiceRwLockDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::ToDispatcher<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
-    fn to_dispatcher(self) -> std::sync::Arc<dyn crate::macro_env::Dispatch> {
-        std::sync::Arc::new(NullServiceRwLockDispatcher::new(self))
+impl crate::macro_env::IntoService<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
+    fn into_service(self) -> crate::macro_env::ServiceToRegister {
+        crate::macro_env::ServiceToRegister::new(std::sync::Arc::new(NullServiceRwLockDispatcher::new(self)))
     }
 }
 #[derive(Debug)]
@@ -89,8 +89,8 @@ pub struct NullServiceRemote {
 }
 impl NullService for NullServiceRemote {}
 impl crate::macro_env::Service for NullServiceRemote {}
-impl crate::macro_env::ToRemote<dyn NullService> for Box<dyn NullService> {
-    fn to_remote(
+impl crate::macro_env::ImportRemote<dyn NullService> for Box<dyn NullService> {
+    fn import_remote(
         port: std::sync::Weak<dyn crate::macro_env::Port>,
         handle: crate::macro_env::HandleToExchange,
     ) -> Self {
@@ -99,8 +99,8 @@ impl crate::macro_env::ToRemote<dyn NullService> for Box<dyn NullService> {
         })
     }
 }
-impl crate::macro_env::ToRemote<dyn NullService> for std::sync::Arc<dyn NullService> {
-    fn to_remote(
+impl crate::macro_env::ImportRemote<dyn NullService> for std::sync::Arc<dyn NullService> {
+    fn import_remote(
         port: std::sync::Weak<dyn crate::macro_env::Port>,
         handle: crate::macro_env::HandleToExchange,
     ) -> Self {
@@ -109,8 +109,8 @@ impl crate::macro_env::ToRemote<dyn NullService> for std::sync::Arc<dyn NullServ
         })
     }
 }
-impl crate::macro_env::ToRemote<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
-    fn to_remote(
+impl crate::macro_env::ImportRemote<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
+    fn import_remote(
         port: std::sync::Weak<dyn crate::macro_env::Port>,
         handle: crate::macro_env::HandleToExchange,
     ) -> Self {

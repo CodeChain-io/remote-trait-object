@@ -33,16 +33,16 @@ pub struct ServiceRef<T: ?Sized + Service> {
 }
 
 impl<T: ?Sized + Service> ServiceRef<T> {
-    pub fn from_service(service: impl ToDispatcher<T>) -> Self {
+    pub fn from_service(service: impl IntoService<T>) -> Self {
         Self {
-            service: ExportOrImport::Export(service.to_dispatcher()),
+            service: ExportOrImport::Export(service.into_service().raw),
             _marker: PhantomData,
         }
     }
 
-    pub fn into_remote<P: ToRemote<T>>(self) -> P {
+    pub fn into_remote<P: ImportRemote<T>>(self) -> P {
         match self.service {
-            ExportOrImport::Import(handle, port) => P::to_remote(port, handle),
+            ExportOrImport::Import(handle, port) => P::import_remote(port, handle),
             _ => panic!("You must call import() on an imported ServiceRef"),
         }
     }
@@ -149,9 +149,9 @@ mod tests {
             }
         }
 
-        impl ToDispatcher<dyn Foo> for Arc<dyn Foo> {
-            fn to_dispatcher(self) -> Arc<dyn Dispatch> {
-                Arc::new(FooImpl)
+        impl IntoService<dyn Foo> for Arc<dyn Foo> {
+            fn into_service(self) -> crate::macro_env::ServiceToRegister {
+                crate::macro_env::ServiceToRegister::new(Arc::new(FooImpl))
             }
         }
 
@@ -186,7 +186,7 @@ mod tests {
 
     mod deserialize_test {
         use super::super::ServiceRef;
-        use crate::{HandleToExchange, Port, Service, ToRemote};
+        use crate::{HandleToExchange, ImportRemote, Port, Service};
         use std::sync::Weak;
 
         trait Foo: Service {
@@ -201,8 +201,8 @@ mod tests {
             }
         }
         impl Service for FooImpl {}
-        impl ToRemote<dyn Foo> for Box<dyn Foo> {
-            fn to_remote(_port: Weak<dyn Port>, handle: HandleToExchange) -> Box<dyn Foo> {
+        impl ImportRemote<dyn Foo> for Box<dyn Foo> {
+            fn import_remote(_port: Weak<dyn Port>, handle: HandleToExchange) -> Box<dyn Foo> {
                 Box::new(FooImpl {
                     handle_to_exchange: handle,
                 })
