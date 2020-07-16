@@ -87,16 +87,16 @@ mod tests {
             }));
             let card_to_give = card.clone() as Arc<RwLock<dyn CreditCard>>;
             assert_eq!(
-                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::export(card_to_give.clone())),
+                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::from_service(card_to_give.clone())),
                 "Here's a delicious veggie pizza"
             );
             assert_eq!(
-                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::export(card_to_give.clone())),
+                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::from_service(card_to_give.clone())),
                 "Not enough balance"
             );
             card.write().balance += 10;
             assert_eq!(
-                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::export(card_to_give)),
+                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::from_service(card_to_give)),
                 "Here's a delicious veggie pizza"
             );
         }
@@ -122,7 +122,7 @@ mod tests {
                 threads.push(std::thread::spawn(move || {
                     start.wait();
                     assert_eq!(
-                        store.order_pizza_credit_card(Pizza::Pineapple, ServiceRef::export(card_to_give)),
+                        store.order_pizza_credit_card(Pizza::Pineapple, ServiceRef::from_service(card_to_give)),
                         "Here's a delicious pineapple pizza"
                     );
                 }));
@@ -157,7 +157,7 @@ mod tests {
         let card = Box::new(MyCreditCard {
             balance: 0,
         }) as Box<dyn CreditCard>;
-        store.register_card(ServiceRef::export(card));
+        store.register_card(ServiceRef::from_service(card));
 
         signal_send.send(()).unwrap();
         store_runner.join().unwrap();
@@ -184,7 +184,7 @@ pub fn massive_with_export(n: usize) {
                 balance: 13,
             }) as Box<dyn CreditCard>;
             assert_eq!(
-                store.order_pizza_credit_card(Pizza::Pepperoni, ServiceRef::export(card)),
+                store.order_pizza_credit_card(Pizza::Pepperoni, ServiceRef::from_service(card)),
                 "Here's a delicious pepperoni pizza"
             );
         }
