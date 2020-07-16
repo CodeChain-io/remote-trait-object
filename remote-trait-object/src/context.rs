@@ -100,7 +100,7 @@ impl Context {
             server: Some(server),
             port: Some(port),
         };
-        let initial_service = crate::import_service(&ctx, initial_handle);
+        let initial_service = crate::import_service_from_handle(&ctx, initial_handle);
         (ctx, initial_service)
     }
 

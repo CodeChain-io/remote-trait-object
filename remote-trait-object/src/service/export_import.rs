@@ -50,14 +50,14 @@ pub trait ImportRemote<T: ?Sized + Service>: Sized {
 
 // These functions are utilities for the generic traits above
 
-pub fn export_service<T: ?Sized + Service>(
+pub fn export_service_into_handle<T: ?Sized + Service>(
     context: &crate::context::Context,
     service: impl IntoService<T>,
 ) -> HandleToExchange {
     context.get_port().upgrade().unwrap().register(service.into_service().raw)
 }
 
-pub fn import_service<T: ?Sized + Service, P: ImportRemote<T>>(
+pub fn import_service_from_handle<T: ?Sized + Service, P: ImportRemote<T>>(
     context: &crate::context::Context,
     handle: HandleToExchange,
 ) -> P {
