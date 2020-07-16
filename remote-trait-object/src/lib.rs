@@ -31,17 +31,19 @@ mod tests;
 pub mod transport;
 
 pub use context::{Config, Context};
-pub use packet::{Packet, PacketView, SlotId};
-pub use port::Port;
-pub use service::export_import::*;
+pub use service::export_import::{
+    export_service_into_handle, import_service_from_handle, ImportRemote, IntoService, ServiceToRegister,
+};
 pub use service::id::setup_identifiers;
-pub use service::serde_support::*;
-pub use service::{create_null_service, NullService};
-pub use service::{Dispatch, Handle, HandleToExchange, MethodId, Service};
+pub use service::serde_support::ServiceRef;
+pub use service::{create_null_service, HandleToExchange, NullService, Service};
 
+#[doc(hidden)]
 pub mod macro_env {
     pub use super::*;
+    pub use port::Port;
     pub use service::id::{IdMap, MethodIdAtomic, ID_ORDERING, MID_REG};
+    pub use service::{Dispatch, Handle, MethodId};
 }
 
 // Re-export macro

@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::packet::Packet;
 use crate::service::{Handle, MethodId};
-use crate::Packet;
 
 impl Handle {
     /// This method is the core of Handle, which serves as a "call stub" for the service trait's method.

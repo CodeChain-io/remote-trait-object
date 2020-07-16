@@ -16,8 +16,9 @@
 
 use super::TestPort;
 use crate as remote_trait_object;
+use crate::port::Port;
 use crate::{ImportRemote, IntoService};
-use crate::{Port, Service, ServiceRef};
+use crate::{Service, ServiceRef};
 use remote_trait_object_macro as rto_macro;
 use std::sync::{Arc, Mutex};
 

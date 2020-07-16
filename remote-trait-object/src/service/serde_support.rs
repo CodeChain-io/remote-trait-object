@@ -16,7 +16,7 @@
 
 use super::export_import::*;
 use super::*;
-use crate::{Dispatch, HandleToExchange};
+use crate::{service::Dispatch, HandleToExchange};
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
 use std::marker::PhantomData;
@@ -113,6 +113,9 @@ impl<'de, T: ?Sized + Service> Deserialize<'de> for ServiceRef<T> {
 mod tests {
     mod serialize_test {
         use super::super::ServiceRef;
+        use crate::macro_env::*;
+        use crate::packet::*;
+        use crate::port::Port;
         use crate::service::ServiceObjectId;
         use crate::*;
         use std::sync::atomic::{AtomicU32, Ordering};
@@ -186,7 +189,8 @@ mod tests {
 
     mod deserialize_test {
         use super::super::ServiceRef;
-        use crate::{HandleToExchange, ImportRemote, Port, Service};
+        use crate::port::Port;
+        use crate::{HandleToExchange, ImportRemote, Service};
         use std::sync::Weak;
 
         trait Foo: Service {
