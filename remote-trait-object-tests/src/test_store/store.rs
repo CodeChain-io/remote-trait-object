@@ -59,7 +59,7 @@ impl Store for MyPizzaStore {
     }
 
     fn order_pizza_credit_card(&self, menu: Pizza, credit_card: ServiceRef<dyn CreditCard>) -> String {
-        let mut credit_card: Box<dyn CreditCard> = credit_card.import();
+        let mut credit_card: Box<dyn CreditCard> = credit_card.into_remote();
         let (price, name) = self.order_pizza_common(menu);
         let result = credit_card.pay(price + self.vat);
         match result {
@@ -69,7 +69,7 @@ impl Store for MyPizzaStore {
     }
 
     fn register_card(&mut self, credit_card: ServiceRef<dyn CreditCard>) {
-        self.registered_card.replace(credit_card.import());
+        self.registered_card.replace(credit_card.into_remote());
     }
 }
 
