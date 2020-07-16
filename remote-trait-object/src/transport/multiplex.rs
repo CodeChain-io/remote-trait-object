@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::packet::{Packet, PacketView};
 use crate::transport::{RecvError, Terminate, TransportRecv, TransportSend};
 use crate::Config;
-use crate::{Packet, PacketView};
 use crossbeam::channel::{self, Receiver, Sender};
 use parking_lot::Mutex;
 use std::thread;
