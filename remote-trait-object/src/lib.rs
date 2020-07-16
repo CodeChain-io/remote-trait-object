@@ -32,7 +32,7 @@ pub mod transport;
 
 pub use context::{Config, Context};
 pub use service::export_import::{
-    export_service_into_handle, import_service_from_handle, ImportRemote, IntoService, ServiceToRegister,
+    export_service_into_handle, import_service_from_handle, ImportRemote, IntoServiceToRegister, ServiceToRegister,
 };
 pub use service::id::setup_identifiers;
 pub use service::serde_support::ServiceRef;

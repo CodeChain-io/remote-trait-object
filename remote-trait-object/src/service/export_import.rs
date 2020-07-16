@@ -37,13 +37,13 @@ impl ServiceToRegister {
 /// Unused T is for avoiding violation of the orphan rule
 /// T will be local type for the crate, and that makes it possible to
 /// ```ignore
-/// impl IntoService<dyn MyService> for Arc<dyn MyService>
+/// impl IntoServiceToRegister<dyn MyService> for Arc<dyn MyService>
 /// ```
-pub trait IntoService<T: ?Sized + Service> {
-    fn into_service(self) -> ServiceToRegister;
+pub trait IntoServiceToRegister<T: ?Sized + Service> {
+    fn into_service_to_register(self) -> ServiceToRegister;
 }
 
-/// Unused T is for avoiding violation of the orphan rule, like `IntoService`
+/// Unused T is for avoiding violation of the orphan rule, like `IntoServiceToRegister`
 pub trait ImportRemote<T: ?Sized + Service>: Sized {
     fn import_remote(port: Weak<dyn Port>, handle: HandleToExchange) -> Self;
 }
@@ -52,9 +52,9 @@ pub trait ImportRemote<T: ?Sized + Service>: Sized {
 
 pub fn export_service_into_handle<T: ?Sized + Service>(
     context: &crate::context::Context,
-    service: impl IntoService<T>,
+    service: impl IntoServiceToRegister<T>,
 ) -> HandleToExchange {
-    context.get_port().upgrade().unwrap().register(service.into_service().raw)
+    context.get_port().upgrade().unwrap().register(service.into_service_to_register().raw)
 }
 
 pub fn import_service_from_handle<T: ?Sized + Service, P: ImportRemote<T>>(
