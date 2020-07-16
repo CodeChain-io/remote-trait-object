@@ -46,8 +46,8 @@ impl crate::macro_env::Dispatch for NullServiceBoxDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::IntoService<dyn NullService> for Box<dyn NullService> {
-    fn into_service(self) -> crate::macro_env::ServiceToRegister {
+impl crate::macro_env::IntoServiceToRegister<dyn NullService> for Box<dyn NullService> {
+    fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
         crate::macro_env::ServiceToRegister::new(std::sync::Arc::new(NullServiceBoxDispatcher::new(self)))
     }
 }
@@ -62,8 +62,8 @@ impl crate::macro_env::Dispatch for NullServiceArcDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::IntoService<dyn NullService> for std::sync::Arc<dyn NullService> {
-    fn into_service(self) -> crate::macro_env::ServiceToRegister {
+impl crate::macro_env::IntoServiceToRegister<dyn NullService> for std::sync::Arc<dyn NullService> {
+    fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
         crate::macro_env::ServiceToRegister::new(std::sync::Arc::new(NullServiceArcDispatcher::new(self)))
     }
 }
@@ -78,8 +78,8 @@ impl crate::macro_env::Dispatch for NullServiceRwLockDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::IntoService<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
-    fn into_service(self) -> crate::macro_env::ServiceToRegister {
+impl crate::macro_env::IntoServiceToRegister<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
+    fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
         crate::macro_env::ServiceToRegister::new(std::sync::Arc::new(NullServiceRwLockDispatcher::new(self)))
     }
 }

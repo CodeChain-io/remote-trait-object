@@ -33,9 +33,9 @@ pub struct ServiceRef<T: ?Sized + Service> {
 }
 
 impl<T: ?Sized + Service> ServiceRef<T> {
-    pub fn from_service(service: impl IntoService<T>) -> Self {
+    pub fn from_service(service: impl IntoServiceToRegister<T>) -> Self {
         Self {
-            service: ExportOrImport::Export(service.into_service().raw),
+            service: ExportOrImport::Export(service.into_service_to_register().raw),
             _marker: PhantomData,
         }
     }
@@ -152,8 +152,8 @@ mod tests {
             }
         }
 
-        impl IntoService<dyn Foo> for Arc<dyn Foo> {
-            fn into_service(self) -> crate::macro_env::ServiceToRegister {
+        impl IntoServiceToRegister<dyn Foo> for Arc<dyn Foo> {
+            fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
                 crate::macro_env::ServiceToRegister::new(Arc::new(FooImpl))
             }
         }
