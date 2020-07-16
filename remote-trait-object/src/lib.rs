@@ -31,15 +31,20 @@ mod tests;
 pub mod transport;
 
 pub use context::{Config, Context};
-pub use service::export_import::{
-    export_service_into_handle, import_service_from_handle, ImportRemote, IntoServiceToRegister, ServiceToRegister,
-};
 pub use service::id::setup_identifiers;
 pub use service::serde_support::ServiceRef;
-pub use service::{create_null_service, HandleToExchange, NullService, Service};
+pub use service::{create_null_service, NullService, Service};
+
+pub mod raw_exchange {
+    //! This module is needed only you want to perform some raw exchange (or export/import) of services.
+
+    pub use crate::service::export_import::*;
+    pub use crate::service::HandleToExchange;
+}
 
 #[doc(hidden)]
 pub mod macro_env {
+    pub use super::raw_exchange::*;
     pub use super::*;
     pub use port::Port;
     pub use service::id::{IdMap, MethodIdAtomic, ID_ORDERING, MID_REG};

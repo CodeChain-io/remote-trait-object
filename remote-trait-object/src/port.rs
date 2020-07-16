@@ -22,8 +22,8 @@ pub use self::types::Handler;
 use crate::forwarder::ServiceForwarder;
 use crate::forwarder::{ServiceObjectId, DELETE_REQUEST};
 use crate::packet::{Packet, PacketView};
+use crate::raw_exchange::ServiceToRegister;
 use crate::service::*;
-use crate::ServiceToRegister;
 use client::Client;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
