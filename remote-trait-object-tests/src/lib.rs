@@ -21,6 +21,8 @@ extern crate log;
 mod test_concurrent_ping;
 //#[cfg(test)]
 //mod test_module;
+#[cfg(test)]
+mod ping;
 mod test_store;
 pub mod transport;
 
