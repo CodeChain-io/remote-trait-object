@@ -18,7 +18,7 @@ use crate::packet::{PacketView, SlotType};
 use crate::port::{client::Client, server::Server, BasicPort, Port};
 use crate::transport::multiplex::{self, ForwardResult, MultiplexResult, Multiplexer};
 use crate::transport::{TransportRecv, TransportSend};
-use crate::{ImportRemote, IntoService, Service};
+use crate::{HandleToExchange, ImportRemote, IntoService, Service, ServiceToRegister};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Weak};
 
@@ -102,6 +102,10 @@ impl Context {
         };
         let initial_service = crate::import_service_from_handle(&ctx, initial_handle);
         (ctx, initial_service)
+    }
+
+    pub fn register_service(&self, service: ServiceToRegister) -> HandleToExchange {
+        self.port.as_ref().unwrap().register(service.raw)
     }
 
     pub fn get_port(&self) -> Weak<dyn Port> {
