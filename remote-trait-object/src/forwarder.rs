@@ -17,6 +17,7 @@
 use crate::packet::PacketView;
 use crate::port::{null_weak_port, Handler, Port};
 use crate::service::Dispatch;
+use crate::ServiceToRegister;
 use parking_lot::RwLock;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
@@ -47,9 +48,9 @@ impl ServiceForwarder {
         }
     }
 
-    pub fn with_initial_service(service_object: Arc<dyn Dispatch>) -> Self {
+    pub fn with_initial_service(service_object: ServiceToRegister) -> Self {
         let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> = Default::default();
-        service_objects.write().insert(INITIAL_SERVICE_OBJECT_ID, service_object);
+        service_objects.write().insert(INITIAL_SERVICE_OBJECT_ID, service_object.raw);
 
         let mut available_ids = VecDeque::new();
         for i in 0u32..100 {

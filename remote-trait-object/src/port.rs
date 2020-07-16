@@ -23,6 +23,7 @@ use crate::forwarder::ServiceForwarder;
 use crate::forwarder::{ServiceObjectId, DELETE_REQUEST};
 use crate::packet::{Packet, PacketView};
 use crate::service::*;
+use crate::ServiceToRegister;
 use client::Client;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -82,7 +83,7 @@ impl BasicPort {
         arc
     }
 
-    pub fn with_initial_service(client: Client, initial_service: Arc<dyn Dispatch>) -> Arc<Self> {
+    pub fn with_initial_service(client: Client, initial_service: ServiceToRegister) -> Arc<Self> {
         let arc = Arc::new(Self {
             registry: Arc::new(ServiceForwarder::with_initial_service(initial_service)),
             client: Some(client),

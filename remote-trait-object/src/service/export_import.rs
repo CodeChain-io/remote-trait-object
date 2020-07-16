@@ -18,6 +18,18 @@ use super::Dispatch;
 use super::*;
 use std::sync::Arc;
 
+pub struct ServiceToRegister {
+    pub(crate) raw: Arc<dyn Dispatch>,
+}
+
+impl ServiceToRegister {
+    pub fn new(raw: Arc<dyn Dispatch>) -> Self {
+        Self {
+            raw,
+        }
+    }
+}
+
 // These traits are associated with some specific service trait.
 // These tratis will be implement by `dyn ServiceTrait` where `T = dyn ServiceTrait` as well.
 // Macro will implement this trait with the target(expanding) service trait.
@@ -25,29 +37,29 @@ use std::sync::Arc;
 /// Unused T is for avoiding violation of the orphan rule
 /// T will be local type for the crate, and that makes it possible to
 /// ```ignore
-/// impl ToDispatcher<dyn MyService> for Arc<dyn MyService>
+/// impl IntoService<dyn MyService> for Arc<dyn MyService>
 /// ```
-pub trait ToDispatcher<T: ?Sized + Service> {
-    fn to_dispatcher(self) -> Arc<dyn Dispatch>;
+pub trait IntoService<T: ?Sized + Service> {
+    fn into_service(self) -> ServiceToRegister;
 }
 
-/// Unused T is for avoiding violation of the orphan rule, like `ToDispatcher`
-pub trait ToRemote<T: ?Sized + Service>: Sized {
-    fn to_remote(port: Weak<dyn Port>, handle: HandleToExchange) -> Self;
+/// Unused T is for avoiding violation of the orphan rule, like `IntoService`
+pub trait ImportRemote<T: ?Sized + Service>: Sized {
+    fn import_remote(port: Weak<dyn Port>, handle: HandleToExchange) -> Self;
 }
 
 // These functions are utilities for the generic traits above
 
 pub fn export_service<T: ?Sized + Service>(
     context: &crate::context::Context,
-    service: impl ToDispatcher<T>,
+    service: impl IntoService<T>,
 ) -> HandleToExchange {
-    context.get_port().upgrade().unwrap().register(service.to_dispatcher())
+    context.get_port().upgrade().unwrap().register(service.into_service().raw)
 }
 
-pub fn import_service<T: ?Sized + Service, P: ToRemote<T>>(
+pub fn import_service<T: ?Sized + Service, P: ImportRemote<T>>(
     context: &crate::context::Context,
     handle: HandleToExchange,
 ) -> P {
-    P::to_remote(context.get_port(), handle)
+    P::import_remote(context.get_port(), handle)
 }

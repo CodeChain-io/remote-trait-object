@@ -18,7 +18,7 @@ use crate::packet::{PacketView, SlotType};
 use crate::port::{client::Client, server::Server, BasicPort, Port};
 use crate::transport::multiplex::{self, ForwardResult, MultiplexResult, Multiplexer};
 use crate::transport::{TransportRecv, TransportSend};
-use crate::{Service, ToDispatcher, ToRemote};
+use crate::{ImportRemote, IntoService, Service};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Weak};
 
@@ -76,12 +76,12 @@ impl Context {
         R: TransportRecv + 'static,
         A: ?Sized + Service,
         B: ?Sized + Service,
-        P: ToRemote<B>,
+        P: ImportRemote<B>,
     >(
         config: Config,
         transport_send: S,
         transport_recv: R,
-        initial_service: impl ToDispatcher<A>,
+        initial_service: impl IntoService<A>,
     ) -> (Self, P) {
         let MultiplexResult {
             multiplexer,
@@ -90,7 +90,7 @@ impl Context {
             multiplexed_send,
         } = Multiplexer::multiplex::<R, S, PacketForward>(config.clone(), transport_send, transport_recv);
         let client = Client::new(config.clone(), multiplexed_send.clone(), response_recv);
-        let port = BasicPort::with_initial_service(client, initial_service.to_dispatcher());
+        let port = BasicPort::with_initial_service(client, initial_service.into_service());
         let server = Server::new(config, port.get_registry(), multiplexed_send, request_recv);
 
         let initial_handle = crate::service::HandleToExchange(crate::forwarder::INITIAL_SERVICE_OBJECT_ID);
