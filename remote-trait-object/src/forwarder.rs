@@ -16,8 +16,8 @@
 
 use crate::packet::PacketView;
 use crate::port::{null_weak_port, Handler, Port};
+use crate::raw_exchange::ServiceToRegister;
 use crate::service::Dispatch;
-use crate::ServiceToRegister;
 use parking_lot::RwLock;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;

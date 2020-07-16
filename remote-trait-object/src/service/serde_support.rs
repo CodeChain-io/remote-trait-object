@@ -16,7 +16,7 @@
 
 use super::export_import::*;
 use super::*;
-use crate::{service::Dispatch, HandleToExchange};
+use crate::{raw_exchange::HandleToExchange, service::Dispatch};
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
 use std::marker::PhantomData;
@@ -190,7 +190,7 @@ mod tests {
     mod deserialize_test {
         use super::super::ServiceRef;
         use crate::port::Port;
-        use crate::{HandleToExchange, ImportRemote, Service};
+        use crate::{raw_exchange::*, Service};
         use std::sync::Weak;
 
         trait Foo: Service {
