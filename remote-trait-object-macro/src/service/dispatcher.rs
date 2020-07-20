@@ -95,7 +95,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
                 _ => panic!(),
             };
 
-            if let Some(unrefed_type) = super::types::is_ref(arg_type)
+            if let Some(unrefed_type) = crate::helper::is_ref(arg_type)
                 .map_err(|e| syn::Error::new_spanned(arg_source, &e).to_compile_error())?
             {
                 type_annotation.elems.push(unrefed_type);
@@ -106,7 +106,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
             type_annotation.elems.push_punct(syn::token::Comma(Span::call_site()));
 
             let arg_ident = quote::format_ident!("a{}", j + 1);
-            let the_arg = if super::types::is_ref(arg_type)
+            let the_arg = if crate::helper::is_ref(arg_type)
                 .map_err(|e| syn::Error::new_spanned(arg_source, &e).to_compile_error())?
                 .is_some()
             {

@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::helper;
 use proc_macro2::TokenStream as TokenStream2;
+
+pub mod dispatcher;
+pub mod id;
+pub mod remote;
 
 pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, TokenStream2> {
     if !args.is_empty() {
@@ -29,9 +32,9 @@ pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, 
         }
     };
 
-    let id = helper::id::generate_id(&source_trait)?;
-    let dispatcher = helper::dispatcher::generate_dispatcher(&source_trait)?;
-    let remote = helper::remote::generate_remote(&source_trait)?;
+    let id = id::generate_id(&source_trait)?;
+    let dispatcher = dispatcher::generate_dispatcher(&source_trait)?;
+    let remote = remote::generate_remote(&source_trait)?;
 
     Ok(quote! {
         #source_trait
