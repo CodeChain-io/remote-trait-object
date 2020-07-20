@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::MacroArgs;
 use crate::create_env_path;
 use crate::helper::path_of_single_ident;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::ToTokens;
 
-pub fn generate_remote(source_trait: &syn::ItemTrait) -> Result<TokenStream2, TokenStream2> {
+pub(super) fn generate_remote(source_trait: &syn::ItemTrait, args: &MacroArgs) -> Result<TokenStream2, TokenStream2> {
     let env_path = create_env_path();
 
     let trait_ident = source_trait.ident.clone();
@@ -38,6 +39,7 @@ pub fn generate_remote(source_trait: &syn::ItemTrait) -> Result<TokenStream2, To
         }
     })
     .unwrap();
+    let serde_format = &args.serde_format;
 
     for item in source_trait.items.iter() {
         let method = match item {
@@ -76,7 +78,7 @@ pub fn generate_remote(source_trait: &syn::ItemTrait) -> Result<TokenStream2, To
         }
 
         let the_call = quote! {
-            self.handle.call::<#env_path::DefaultSerdeFormat, _, _>(#id_ident.load(#env_path::ID_ORDERING), &#arguments_in_tuple)
+            self.handle.call::<#serde_format, _, _>(#id_ident.load(#env_path::ID_ORDERING), &#arguments_in_tuple)
         };
         the_method.block.stmts.push(syn::Stmt::Expr(syn::Expr::Verbatim(the_call)));
         imported_struct_impl.items.push(syn::ImplItem::Method(the_method));

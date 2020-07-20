@@ -14,15 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::MacroArgs;
 use crate::create_env_path;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 
-pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2, TokenStream2> {
+pub(super) fn generate_dispatcher(
+    source_trait: &syn::ItemTrait,
+    args: &MacroArgs,
+) -> Result<TokenStream2, TokenStream2> {
     let env_path = create_env_path();
     let trait_ident = source_trait.ident.clone();
     let box_dispatcher_ident = quote::format_ident!("{}BoxDispatcher", trait_ident);
     let arc_dispatcher_ident = quote::format_ident!("{}ArcDispatcher", trait_ident);
     let rwlock_dispatcher_ident = quote::format_ident!("{}RwLockDispatcher", trait_ident);
+    let serde_format = &args.serde_format;
 
     // TODO: If # of methods is larger than certain limit,
     // then introduce a closure list for the method dispatch,
@@ -123,7 +128,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
 
         let stmt_deserialize = quote! {
             // TODO: Make the macro be able to take deserialization scheme
-            let #the_let_pattern: #type_annotation =  <#env_path::DefaultSerdeFormat as #env_path::SerdeFormat>::from_slice(args).unwrap();
+            let #the_let_pattern: #type_annotation =  <#serde_format as #env_path::SerdeFormat>::from_slice(args).unwrap();
         };
 
         let method_name = method.sig.ident.clone();
@@ -141,7 +146,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
         };
 
         let the_return = quote! {
-            return <#env_path::DefaultSerdeFormat as #env_path::SerdeFormat>::to_vec(&result).unwrap();
+            return <#serde_format as #env_path::SerdeFormat>::to_vec(&result).unwrap();
         };
 
         if_else_clauses.extend(quote! {
