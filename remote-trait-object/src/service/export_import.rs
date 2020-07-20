@@ -22,11 +22,10 @@ pub struct ServiceToRegister {
     pub(crate) raw: Arc<dyn Dispatch>,
 }
 
-impl ServiceToRegister {
-    pub fn new(raw: Arc<dyn Dispatch>) -> Self {
-        Self {
-            raw,
-        }
+// This belongs to macro_env
+pub fn create_service_to_register(raw: Arc<dyn Dispatch>) -> ServiceToRegister {
+    ServiceToRegister {
+        raw,
     }
 }
 

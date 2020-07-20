@@ -154,7 +154,7 @@ mod tests {
 
         impl IntoServiceToRegister<dyn Foo> for Arc<dyn Foo> {
             fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
-                crate::macro_env::ServiceToRegister::new(Arc::new(FooImpl))
+                crate::macro_env::create_service_to_register(Arc::new(FooImpl))
             }
         }
 

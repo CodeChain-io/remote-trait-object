@@ -48,7 +48,7 @@ impl crate::macro_env::Dispatch for NullServiceBoxDispatcher {
 }
 impl crate::macro_env::IntoServiceToRegister<dyn NullService> for Box<dyn NullService> {
     fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
-        crate::macro_env::ServiceToRegister::new(std::sync::Arc::new(NullServiceBoxDispatcher::new(self)))
+        crate::macro_env::create_service_to_register(std::sync::Arc::new(NullServiceBoxDispatcher::new(self)))
     }
 }
 pub struct NullServiceArcDispatcher {}
@@ -64,7 +64,7 @@ impl crate::macro_env::Dispatch for NullServiceArcDispatcher {
 }
 impl crate::macro_env::IntoServiceToRegister<dyn NullService> for std::sync::Arc<dyn NullService> {
     fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
-        crate::macro_env::ServiceToRegister::new(std::sync::Arc::new(NullServiceArcDispatcher::new(self)))
+        crate::macro_env::create_service_to_register(std::sync::Arc::new(NullServiceArcDispatcher::new(self)))
     }
 }
 pub struct NullServiceRwLockDispatcher {}
@@ -80,7 +80,7 @@ impl crate::macro_env::Dispatch for NullServiceRwLockDispatcher {
 }
 impl crate::macro_env::IntoServiceToRegister<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
     fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
-        crate::macro_env::ServiceToRegister::new(std::sync::Arc::new(NullServiceRwLockDispatcher::new(self)))
+        crate::macro_env::create_service_to_register(std::sync::Arc::new(NullServiceRwLockDispatcher::new(self)))
     }
 }
 #[derive(Debug)]
