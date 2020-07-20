@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::MacroArgs;
 use crate::create_env_path;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use syn::Ident;
@@ -35,7 +36,7 @@ fn id_method_setter_ident(the_trait: &syn::ItemTrait, method: &syn::TraitItemMet
     quote::format_ident!("id_method_setter_{}_{}", the_trait.ident, method.sig.ident)
 }
 
-pub fn generate_id(source_trait: &syn::ItemTrait) -> Result<TokenStream2, TokenStream2> {
+pub(super) fn generate_id(source_trait: &syn::ItemTrait, _args: &MacroArgs) -> Result<TokenStream2, TokenStream2> {
     let env_path = create_env_path();
     let lit_trait_name = syn::LitStr::new(&format!("{}", source_trait.ident), Span::call_site());
     let mut method_id_table = TokenStream2::new();

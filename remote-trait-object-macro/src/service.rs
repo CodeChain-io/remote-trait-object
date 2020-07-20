@@ -15,15 +15,79 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use proc_macro2::TokenStream as TokenStream2;
+use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
+use syn::Token;
 
 pub mod dispatcher;
 pub mod id;
 pub mod remote;
 
-pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, TokenStream2> {
-    if !args.is_empty() {
-        return Err(syn::Error::new_spanned(input, "#[service] doesn't take any argument").to_compile_error())
+struct SingleArg<T: Parse> {
+    pub arg_name: syn::Ident,
+    pub arg_value: T,
+}
+
+impl<T: Parse> Parse for SingleArg<T> {
+    fn parse(input: ParseStream) -> syn::parse::Result<Self> {
+        let arg_name = input.parse()?;
+        input.parse::<Token![=]>()?;
+        let arg_value = input.parse()?;
+        Ok(Self {
+            arg_name,
+            arg_value,
+        })
     }
+}
+
+#[derive(Default)]
+struct MacroArgsRaw {
+    pub serde_format: Option<syn::Path>,
+}
+
+struct MacroArgs {
+    pub serde_format: syn::Path,
+}
+
+impl MacroArgsRaw {
+    fn update(&mut self, ts: TokenStream2) -> syn::parse::Result<()> {
+        let x: SingleArg<TokenStream2> = syn::parse2(ts.clone())?;
+
+        if x.arg_name == quote::format_ident!("serde_format") {
+            let value = syn::parse2(x.arg_value)?;
+            if self.serde_format.replace(value).is_some() {
+                Err(syn::parse::Error::new_spanned(ts, "Duplicated arguments"))
+            } else {
+                Ok(())
+            }
+        } else {
+            Err(syn::parse::Error::new_spanned(ts, "Unsupported argument"))
+        }
+    }
+
+    fn fill_default_values(self) -> MacroArgs {
+        MacroArgs {
+            serde_format: self
+                .serde_format
+                .unwrap_or_else(|| syn::parse2(quote! {remote_trait_object::macro_env::DefaultSerdeFormat}).unwrap()),
+        }
+    }
+}
+
+impl Parse for MacroArgsRaw {
+    fn parse(input: ParseStream) -> syn::parse::Result<Self> {
+        let mut result = MacroArgsRaw::default();
+        let args = Punctuated::<TokenStream2, Token![,]>::parse_terminated(input)?;
+        for arg in args {
+            result.update(arg)?;
+        }
+        Ok(result)
+    }
+}
+
+pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, TokenStream2> {
+    let args: MacroArgsRaw = syn::parse2(args).map_err(|e| e.to_compile_error())?;
+    let args = args.fill_default_values();
 
     let source_trait = match syn::parse2::<syn::ItemTrait>(input.clone()) {
         Ok(x) => x,
@@ -32,9 +96,9 @@ pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, 
         }
     };
 
-    let id = id::generate_id(&source_trait)?;
-    let dispatcher = dispatcher::generate_dispatcher(&source_trait)?;
-    let remote = remote::generate_remote(&source_trait)?;
+    let id = id::generate_id(&source_trait, &args)?;
+    let dispatcher = dispatcher::generate_dispatcher(&source_trait, &args)?;
+    let remote = remote::generate_remote(&source_trait, &args)?;
 
     Ok(quote! {
         #source_trait
