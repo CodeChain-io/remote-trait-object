@@ -42,8 +42,7 @@ pub struct Handle {
 }
 
 impl Handle {
-    /// You should not call this! This is for the macro.
-    pub fn careful_new(imported_id: HandleToExchange, port: Weak<dyn Port>) -> Self {
+    pub fn new(imported_id: HandleToExchange, port: Weak<dyn Port>) -> Self {
         Handle {
             id: imported_id.0,
             port,
