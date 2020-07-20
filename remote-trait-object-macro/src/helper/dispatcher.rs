@@ -123,7 +123,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
 
         let stmt_deserialize = quote! {
             // TODO: Make the macro be able to take deserialization scheme
-            let #the_let_pattern: #type_annotation = serde_cbor::from_slice(args).unwrap();
+            let #the_let_pattern: #type_annotation =  <#env_path::DefaultSerdeFormat as #env_path::SerdeFormat>::from_slice(args).unwrap();
         };
 
         let method_name = method.sig.ident.clone();
@@ -141,7 +141,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
         };
 
         let the_return = quote! {
-            return serde_cbor::to_vec(&result).unwrap();
+            return <#env_path::DefaultSerdeFormat as #env_path::SerdeFormat>::to_vec(&result).unwrap();
         };
 
         if_else_clauses.extend(quote! {

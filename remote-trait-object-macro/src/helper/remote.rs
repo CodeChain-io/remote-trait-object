@@ -76,7 +76,7 @@ pub fn generate_remote(source_trait: &syn::ItemTrait) -> Result<TokenStream2, To
         }
 
         let the_call = quote! {
-            self.handle.call(#id_ident.load(#env_path::ID_ORDERING), &#arguments_in_tuple)
+            self.handle.call::<#env_path::DefaultSerdeFormat, _, _>(#id_ident.load(#env_path::ID_ORDERING), &#arguments_in_tuple)
         };
         the_method.block.stmts.push(syn::Stmt::Expr(syn::Expr::Verbatim(the_call)));
         imported_struct_impl.items.push(syn::ImplItem::Method(the_method));

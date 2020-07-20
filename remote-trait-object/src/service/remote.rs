@@ -15,19 +15,23 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::packet::Packet;
-use crate::service::{Handle, MethodId};
+use crate::service::{Handle, MethodId, SerdeFormat};
 
 impl Handle {
     /// This method is the core of Handle, which serves as a "call stub" for the service trait's method.
     /// It carries out user's remote call in a generic way.
     /// Invoking this method is role of the macro, by putting appropriate instantiation of this generic
     /// for each service trait's method, according to the method signature of each.
-    pub fn call<S: serde::Serialize, D: serde::de::DeserializeOwned>(&self, method: MethodId, args: &S) -> D {
+    pub fn call<F: SerdeFormat, S: serde::Serialize, D: serde::de::DeserializeOwned>(
+        &self,
+        method: MethodId,
+        args: &S,
+    ) -> D {
         super::serde_support::port_thread_local::set_port(self.port.clone());
-        let args = serde_cbor::to_vec(args).unwrap();
+        let args = F::to_vec(args).unwrap();
         let packet = Packet::new_request(self.id, method, &args);
         let response = self.port.upgrade().unwrap().call(packet.view());
-        let result = serde_cbor::from_slice(response.data()).unwrap();
+        let result = F::from_slice(response.data()).unwrap();
         super::serde_support::port_thread_local::remove_port();
         result
     }
