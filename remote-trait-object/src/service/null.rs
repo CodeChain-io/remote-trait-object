@@ -95,7 +95,7 @@ impl crate::macro_env::ImportRemote<dyn NullService> for Box<dyn NullService> {
         handle: crate::macro_env::HandleToExchange,
     ) -> Self {
         Box::new(NullServiceRemote {
-            handle: crate::macro_env::Handle::careful_new(handle, port),
+            handle: crate::macro_env::Handle::new(handle, port),
         })
     }
 }
@@ -105,7 +105,7 @@ impl crate::macro_env::ImportRemote<dyn NullService> for std::sync::Arc<dyn Null
         handle: crate::macro_env::HandleToExchange,
     ) -> Self {
         std::sync::Arc::new(NullServiceRemote {
-            handle: crate::macro_env::Handle::careful_new(handle, port),
+            handle: crate::macro_env::Handle::new(handle, port),
         })
     }
 }
@@ -115,7 +115,7 @@ impl crate::macro_env::ImportRemote<dyn NullService> for std::sync::Arc<parking_
         handle: crate::macro_env::HandleToExchange,
     ) -> Self {
         std::sync::Arc::new(parking_lot::RwLock::new(NullServiceRemote {
-            handle: crate::macro_env::Handle::careful_new(handle, port),
+            handle: crate::macro_env::Handle::new(handle, port),
         }))
     }
 }

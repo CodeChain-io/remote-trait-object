@@ -88,21 +88,21 @@ pub fn generate_remote(source_trait: &syn::ItemTrait) -> Result<TokenStream2, To
         impl #env_path::ImportRemote<dyn #trait_ident> for Box<dyn #trait_ident> {
             fn import_remote(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> Self {
                 Box::new(#struct_ident {
-                    handle: #env_path::Handle::careful_new(handle, port),
+                    handle: #env_path::Handle::new(handle, port),
                 })
             }
         }
         impl #env_path::ImportRemote<dyn #trait_ident> for std::sync::Arc<dyn #trait_ident> {
             fn import_remote(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> Self {
                 std::sync::Arc::new(#struct_ident {
-                    handle: #env_path::Handle::careful_new(handle, port),
+                    handle: #env_path::Handle::new(handle, port),
                 })
             }
         }
         impl #env_path::ImportRemote<dyn #trait_ident> for std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>> {
             fn import_remote(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> Self {
                 std::sync::Arc::new(parking_lot::RwLock::new(#struct_ident {
-                    handle: #env_path::Handle::careful_new(handle, port),
+                    handle: #env_path::Handle::new(handle, port),
                 }))
             }
         }
