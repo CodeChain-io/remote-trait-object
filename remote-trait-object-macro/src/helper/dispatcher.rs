@@ -189,7 +189,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
             }
             impl #env_path::IntoServiceToRegister<dyn #trait_ident> for Box<dyn #trait_ident> {
                 fn into_service_to_register(self) -> #env_path::ServiceToRegister {
-                    #env_path::ServiceToRegister::new(std::sync::Arc::new(#box_dispatcher_ident::new(self)))
+                    #env_path::create_service_to_register(std::sync::Arc::new(#box_dispatcher_ident::new(self)))
                 }
             }
         }
@@ -215,7 +215,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
             }
             impl #env_path::IntoServiceToRegister<dyn #trait_ident> for Box<dyn #trait_ident> {
                 fn into_service_to_register(self) -> #env_path::ServiceToRegister {
-                    #env_path::ServiceToRegister::new(std::sync::Arc::new(#box_dispatcher_ident::new(self)))
+                    #env_path::create_service_to_register(std::sync::Arc::new(#box_dispatcher_ident::new(self)))
                 }
             }
         }
@@ -245,7 +245,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
             }
             impl #env_path::IntoServiceToRegister<dyn #trait_ident> for std::sync::Arc<dyn #trait_ident> {
                 fn into_service_to_register(self) -> #env_path::ServiceToRegister {
-                    #env_path::ServiceToRegister::new(std::sync::Arc::new(#arc_dispatcher_ident::new(self)))
+                    #env_path::create_service_to_register(std::sync::Arc::new(#arc_dispatcher_ident::new(self)))
                 }
             }
         }
@@ -272,7 +272,7 @@ pub fn generate_dispatcher(source_trait: &syn::ItemTrait) -> Result<TokenStream2
         }
         impl #env_path::IntoServiceToRegister<dyn #trait_ident> for std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>> {
             fn into_service_to_register(self) -> #env_path::ServiceToRegister {
-                #env_path::ServiceToRegister::new(std::sync::Arc::new(#rwlock_dispatcher_ident::new(self)))
+                #env_path::create_service_to_register(std::sync::Arc::new(#rwlock_dispatcher_ident::new(self)))
             }
         }
     };
