@@ -16,14 +16,14 @@
 
 use super::export_import::*;
 use super::*;
-use crate::{raw_exchange::HandleToExchange, service::Dispatch};
+use crate::raw_exchange::HandleToExchange;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
 enum ExportOrImport {
-    Export(Arc<dyn Dispatch>),
+    Export(ServiceToRegister),
     Import(HandleToExchange, Weak<dyn Port>),
 }
 
@@ -35,7 +35,7 @@ pub struct ServiceRef<T: ?Sized + Service> {
 impl<T: ?Sized + Service> ServiceRef<T> {
     pub fn from_service(service: impl IntoServiceToRegister<T>) -> Self {
         Self {
-            service: ExportOrImport::Export(service.into_service_to_register().raw),
+            service: ExportOrImport::Export(service.into_service_to_register()),
             _marker: PhantomData,
         }
     }
@@ -88,8 +88,8 @@ impl<T: ?Sized + Service> Serialize for ServiceRef<T> {
         S: Serializer, {
         let error = "You must not de/serialize ServiceRef by yourself. If you not, this is a bug.";
         if let ExportOrImport::Export(service) = &self.service {
-            debug_assert_eq!(Arc::strong_count(service), 1);
-            let handle = port_thread_local::get_port().upgrade().expect(error).register(Arc::clone(service));
+            debug_assert_eq!(Arc::strong_count(&service.raw), 1);
+            let handle = port_thread_local::get_port().upgrade().expect(error).register(Arc::clone(&service.raw));
             handle.serialize(serializer)
         } else {
             panic!(error)
