@@ -51,8 +51,13 @@ fn test_runner(f: impl Fn(Box<dyn Store>)) {
         .spawn(move || run_store((send2, recv2), signal_recv))
         .unwrap();
 
-    let (_rto_context, store): (Context, Box<dyn Store>) =
-        Context::with_initial_service(Config::default_setup(), send1, recv1, create_null_service());
+    let (_rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
+        Config::default_setup(),
+        send1,
+        recv1,
+        ServiceRef::from_service(create_null_service()),
+    );
+    let store: Box<dyn Store> = store.into_remote();
 
     f(store);
 
@@ -151,8 +156,13 @@ mod tests {
             .spawn(move || run_store((send2, recv2), signal_recv))
             .unwrap();
 
-        let (rto_context, mut store): (Context, Box<dyn Store>) =
-            Context::with_initial_service(Config::default_setup(), send1, recv1, create_null_service());
+        let (rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
+            Config::default_setup(),
+            send1,
+            recv1,
+            ServiceRef::from_service(create_null_service()),
+        );
+        let mut store: Box<dyn Store> = store.into_remote();
 
         let card = Box::new(MyCreditCard {
             balance: 0,

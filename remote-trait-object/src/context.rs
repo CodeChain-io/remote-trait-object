@@ -18,7 +18,7 @@ use crate::packet::{PacketView, SlotType};
 use crate::port::{client::Client, server::Server, BasicPort, Port};
 use crate::transport::multiplex::{self, ForwardResult, MultiplexResult, Multiplexer};
 use crate::transport::{TransportRecv, TransportSend};
-use crate::{raw_exchange::*, Service};
+use crate::{raw_exchange::*, Service, ServiceRef};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Weak};
 
@@ -76,13 +76,12 @@ impl Context {
         R: TransportRecv + 'static,
         A: ?Sized + Service,
         B: ?Sized + Service,
-        P: ImportRemote<B>,
     >(
         config: Config,
         transport_send: S,
         transport_recv: R,
-        initial_service: impl IntoServiceToRegister<A>,
-    ) -> (Self, P) {
+        initial_service: ServiceRef<A>,
+    ) -> (Self, ServiceRef<B>) {
         let MultiplexResult {
             multiplexer,
             request_recv,
@@ -90,17 +89,18 @@ impl Context {
             multiplexed_send,
         } = Multiplexer::multiplex::<R, S, PacketForward>(config.clone(), transport_send, transport_recv);
         let client = Client::new(config.clone(), multiplexed_send.clone(), response_recv);
-        let port = BasicPort::with_initial_service(client, initial_service.into_service_to_register());
+        let port = BasicPort::with_initial_service(client, initial_service.get_raw_export());
         let server = Server::new(config, port.get_registry(), multiplexed_send, request_recv);
 
         let initial_handle = crate::service::HandleToExchange(crate::forwarder::INITIAL_SERVICE_OBJECT_ID);
+        let port_weak = Arc::downgrade(&port);
 
         let ctx = Context {
             multiplexer: Some(multiplexer),
             server: Some(server),
             port: Some(port),
         };
-        let initial_service = import_service_from_handle(&ctx, initial_handle);
+        let initial_service = ServiceRef::from_raw_import(initial_handle, port_weak);
         (ctx, initial_service)
     }
 

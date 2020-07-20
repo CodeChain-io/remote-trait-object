@@ -46,6 +46,20 @@ impl<T: ?Sized + Service> ServiceRef<T> {
             _ => panic!("You must call import() on an imported ServiceRef"),
         }
     }
+
+    pub(crate) fn get_raw_export(self) -> ServiceToRegister {
+        match self.service {
+            ExportOrImport::Export(x) => x,
+            _ => panic!(),
+        }
+    }
+
+    pub(crate) fn from_raw_import(handle: HandleToExchange, port: Weak<dyn Port>) -> Self {
+        Self {
+            service: ExportOrImport::Import(handle, port),
+            _marker: PhantomData,
+        }
+    }
 }
 
 /// This manages thread-local pointer of the port, which will be used in serialization of
