@@ -16,11 +16,12 @@
 
 use crate::forwarder::ServiceObjectId;
 use crate::service::MethodId;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 const UNDECIDED_SLOT: u32 = 4444;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct SlotId(u32);
 
 impl fmt::Display for SlotId {
@@ -73,9 +74,20 @@ impl SlotId {
 
 const SLOT_CALL_OR_RETURN_INDICATOR: SlotId = SlotId(1024);
 
-// FIXME: repr(C) is not a reliable encoding method.
-// We need to fix the endianness of binary data.
-#[repr(C)]
+/// FIXME: Replace this hard-coded value to some constant evaluation
+const PACKET_HEADER_SIZE: usize = 12;
+
+#[test]
+fn packet_header_size() {
+    let x = PacketHeader {
+        slot: SlotId(0),
+        service_object_id: 0,
+        method: 0,
+    };
+    assert_eq!(bincode::serialize(&x).unwrap().len(), PACKET_HEADER_SIZE);
+}
+
+#[derive(Serialize, Deserialize)]
 struct PacketHeader {
     pub slot: SlotId,
     pub service_object_id: ServiceObjectId,
@@ -83,8 +95,8 @@ struct PacketHeader {
 }
 
 impl PacketHeader {
-    pub fn len() -> usize {
-        std::mem::size_of::<PacketHeader>()
+    pub const fn len() -> usize {
+        PACKET_HEADER_SIZE
     }
 
     pub fn new(slot: SlotId, service_object_id: ServiceObjectId, method: MethodId) -> Self {
@@ -96,13 +108,11 @@ impl PacketHeader {
     }
 
     pub fn from_buffer(buffer: &[u8]) -> Self {
-        unsafe { std::ptr::read(buffer.as_ptr().cast()) }
+        bincode::deserialize_from(buffer).unwrap()
     }
 
     pub fn write(&self, buffer: &mut [u8]) {
-        unsafe {
-            std::ptr::copy_nonoverlapping(self, buffer.as_mut_ptr().cast(), 1);
-        }
+        bincode::serialize_into(buffer, self).unwrap()
     }
 }
 
