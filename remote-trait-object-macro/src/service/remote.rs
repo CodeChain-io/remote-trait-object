@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::path_of_single_ident;
 use crate::create_env_path;
+use crate::helper::path_of_single_ident;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::ToTokens;
 
