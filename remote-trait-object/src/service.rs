@@ -68,3 +68,23 @@ where
 /// All service trait must implement this.
 /// This trait serves as a mere marker trait with two bounds
 pub trait Service: Send + Sync {}
+
+/// A serde de/serialization format that will be used for a service.
+pub trait SerdeFormat {
+    fn to_vec<S: serde::Serialize>(s: &S) -> Result<Vec<u8>, ()>;
+    fn from_slice<D: serde::de::DeserializeOwned>(data: &[u8]) -> Result<D, ()>;
+}
+
+/// In most case the format isn't important because the users won't see the raw data directly anyway.
+/// Thus we provide a default format for the macro.
+pub struct Cbor;
+
+impl SerdeFormat for Cbor {
+    fn to_vec<S: serde::Serialize>(s: &S) -> Result<Vec<u8>, ()> {
+        serde_cbor::to_vec(s).map_err(|_| ())
+    }
+
+    fn from_slice<D: serde::de::DeserializeOwned>(data: &[u8]) -> Result<D, ()> {
+        serde_cbor::from_slice(data).map_err(|_| ())
+    }
+}

@@ -33,7 +33,7 @@ pub mod transport;
 pub use context::{Config, Context};
 pub use service::id::setup_identifiers;
 pub use service::serde_support::ServiceRef;
-pub use service::{create_null_service, NullService, Service};
+pub use service::{create_null_service, NullService, SerdeFormat, Service};
 
 pub mod raw_exchange {
     //! This module is needed only you want to perform some raw exchange (or export/import) of services.
@@ -51,7 +51,7 @@ pub mod macro_env {
     pub use port::Port;
     pub use service::export_import::create_service_to_register;
     pub use service::id::{IdMap, MethodIdAtomic, ID_ORDERING, MID_REG};
-    pub use service::{Dispatch, Handle, MethodId};
+    pub use service::{Cbor as DefaultSerdeFormat, Dispatch, Handle, MethodId};
 }
 
 // Re-export macro

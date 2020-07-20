@@ -63,7 +63,7 @@ impl Port for BasicPort {
             return
         }
         let packet = Packet::new_request(id, DELETE_REQUEST, &[]);
-        assert_eq!(self.client.as_ref().unwrap().call(packet.view()).data(), []);
+        assert!(self.client.as_ref().unwrap().call(packet.view()).data().is_empty());
     }
 
     fn register(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange {
