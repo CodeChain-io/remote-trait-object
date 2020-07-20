@@ -77,14 +77,14 @@ impl Service for MyPizzaStore {}
 
 pub fn run_store(transport: (IntraSend, IntraRecv), end_signal: Receiver<()>) {
     let (transport_send, transport_recv) = transport;
-    let (_rto_context, _null): (Context, Box<dyn NullService>) = Context::with_initial_service(
+    let (_rto_context, _null): (Context, ServiceRef<dyn NullService>) = Context::with_initial_service(
         Config::default_setup(),
         transport_send,
         transport_recv,
-        Box::new(MyPizzaStore {
+        ServiceRef::from_service(Box::new(MyPizzaStore {
             vat: 1,
             registered_card: None,
-        }) as Box<dyn Store>,
+        }) as Box<dyn Store>),
     );
     end_signal.recv().unwrap();
 }

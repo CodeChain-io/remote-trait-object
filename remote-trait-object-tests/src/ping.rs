@@ -61,7 +61,7 @@ impl Ping for SimplePing {
 }
 
 #[allow(clippy::type_complexity)]
-fn run(barrier: Arc<Barrier>) -> ((Context, Box<dyn Hello>), (Context, Box<dyn Hello>)) {
+fn run(barrier: Arc<Barrier>) -> ((Context, ServiceRef<dyn Hello>), (Context, ServiceRef<dyn Hello>)) {
     let crate::transport::TransportEnds {
         recv1,
         send1,
@@ -73,17 +73,17 @@ fn run(barrier: Arc<Barrier>) -> ((Context, Box<dyn Hello>), (Context, Box<dyn H
             Config::default_setup(),
             send1,
             recv1,
-            Box::new(SimpleHello {
+            ServiceRef::from_service(Box::new(SimpleHello {
                 barrier: Arc::clone(&barrier),
-            }) as Box<dyn Hello>,
+            }) as Box<dyn Hello>),
         ),
         Context::with_initial_service(
             Config::default_setup(),
             send2,
             recv2,
-            Box::new(SimpleHello {
+            ServiceRef::from_service(Box::new(SimpleHello {
                 barrier,
-            }) as Box<dyn Hello>,
+            }) as Box<dyn Hello>),
         ),
     )
 }
@@ -92,6 +92,8 @@ fn run(barrier: Arc<Barrier>) -> ((Context, Box<dyn Hello>), (Context, Box<dyn H
 fn ping1() {
     let barrier = Arc::new(Barrier::new(1));
     let ((_ctx1, hello1), (_ctx2, hello2)) = run(Arc::clone(&barrier));
+    let hello1: Box<dyn Hello> = hello1.into_remote();
+    let hello2: Box<dyn Hello> = hello2.into_remote();
 
     let ping1: Box<dyn Ping> = hello1.hey().into_remote();
     let ping2: Box<dyn Ping> = hello2.hey().into_remote();
@@ -109,6 +111,8 @@ fn ping_concurrent1() {
     for _ in 0..100 {
         let barrier = Arc::new(Barrier::new(n + 1));
         let ((_ctx1, hello1), (_ctx2, hello2)) = run(Arc::clone(&barrier));
+        let hello1: Box<dyn Hello> = hello1.into_remote();
+        let hello2: Box<dyn Hello> = hello2.into_remote();
 
         let pings: Vec<Box<dyn Ping>> = (0..n).map(|_| hello2.hey().into_remote()).collect();
         let joins: Vec<thread::JoinHandle<()>> = pings
@@ -135,6 +139,8 @@ fn ping_concurrent2() {
     for _ in 0..100 {
         let barrier = Arc::new(Barrier::new(n + 1));
         let ((_ctx1, hello1), (_ctx2, hello2)) = run(Arc::clone(&barrier));
+        let hello1: Box<dyn Hello> = hello1.into_remote();
+        let hello2: Box<dyn Hello> = hello2.into_remote();
 
         let ping: Arc<dyn Ping> = hello2.hey().into_remote();
 
