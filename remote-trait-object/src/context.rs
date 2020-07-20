@@ -108,7 +108,7 @@ impl Context {
         self.port.as_ref().unwrap().register(service.raw)
     }
 
-    pub fn get_port(&self) -> Weak<dyn Port> {
+    pub(crate) fn get_port(&self) -> Weak<dyn Port> {
         Arc::downgrade(&self.port.clone().expect("It becomes None only when the context is dropped.")) as Weak<dyn Port>
     }
 
