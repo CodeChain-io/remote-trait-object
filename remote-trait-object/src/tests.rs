@@ -22,6 +22,7 @@ use remote_trait_object_macro as rto_macro;
 use crate::forwarder::ServiceObjectId;
 use crate::packet::{Packet, PacketView};
 use crate::port::*;
+use crate::raw_exchange::{ImportRemote, IntoServiceToRegister};
 use crate::service::*;
 use parking_lot::Mutex;
 use std::collections::HashMap;
@@ -127,25 +128,16 @@ impl Service1 for MyObject {
     }
 }
 
-// TODO: Replace manual Remote/Dispatcher construction to import/export
 #[test]
 fn macro1() {
     let port = Arc::new(TestPort::new());
     let port_weak = Arc::downgrade(&port);
 
-    let object = Arc::new(MyObject {
+    let object = Box::new(MyObject {
         mul: 4,
-    }) as Arc<dyn Service1>;
-    let dispatcher = Arc::new(Service1ArcDispatcher {
-        object,
-    }) as Arc<dyn Dispatch>;
-    let handle = port.register(dispatcher);
-    let remote = Service1Remote {
-        handle: Handle {
-            port: port_weak,
-            id: handle.0,
-        },
-    };
+    }) as Box<dyn Service1>;
+    let handle = port.register(object.into_service_to_register().raw);
+    let remote = <Box<dyn Service1> as ImportRemote<dyn Service1>>::import_remote(port_weak, handle);
 
     assert_eq!(remote.f1(1, &2, &[3, 4], (5, 6), &(7, "8".to_owned())), (1 + 2 + 3 + 4 + 5 + 6 + 7 + 8) * 4);
     assert_eq!(remote.f2("Hello", &Some(123)), ("Hello_123_4".to_owned(), "Bye".to_owned()));
