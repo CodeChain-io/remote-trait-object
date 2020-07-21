@@ -19,11 +19,19 @@ use super::*;
 use crate::raw_exchange::HandleToExchange;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
+use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
+/// Some data format traverses over data **twice**, first for size estimation and second for real encoding.
+/// Thus we use prepare secondary phase `Exported`.
+enum ExportEntry {
+    ReadyToExport(ServiceToRegister),
+    Exported(HandleToExchange),
+}
+
 enum ExportOrImport {
-    Export(ServiceToRegister),
+    Export(RefCell<ExportEntry>),
     Import(HandleToExchange, Weak<dyn Port>),
 }
 
@@ -35,7 +43,9 @@ pub struct ServiceRef<T: ?Sized + Service> {
 impl<T: ?Sized + Service> ServiceRef<T> {
     pub fn from_service(service: impl IntoServiceToRegister<T>) -> Self {
         Self {
-            service: ExportOrImport::Export(service.into_service_to_register()),
+            service: ExportOrImport::Export(RefCell::new(ExportEntry::ReadyToExport(
+                service.into_service_to_register(),
+            ))),
             _marker: PhantomData,
         }
     }
@@ -49,7 +59,10 @@ impl<T: ?Sized + Service> ServiceRef<T> {
 
     pub(crate) fn get_raw_export(self) -> ServiceToRegister {
         match self.service {
-            ExportOrImport::Export(x) => x,
+            ExportOrImport::Export(x) => match x.into_inner() {
+                ExportEntry::ReadyToExport(s) => s,
+                _ => panic!(),
+            },
             _ => panic!(),
         }
     }
@@ -101,9 +114,17 @@ impl<T: ?Sized + Service> Serialize for ServiceRef<T> {
     where
         S: Serializer, {
         let error = "You must not de/serialize ServiceRef by yourself. If you not, this is a bug.";
-        if let ExportOrImport::Export(service) = &self.service {
-            debug_assert_eq!(Arc::strong_count(&service.raw), 1);
-            let handle = port_thread_local::get_port().upgrade().expect(error).register(Arc::clone(&service.raw));
+        if let ExportOrImport::Export(export_entry) = &self.service {
+            let (handle, have_to_replace) = match &*export_entry.borrow() {
+                ExportEntry::ReadyToExport(service) => {
+                    debug_assert_eq!(Arc::strong_count(&service.raw), 1);
+                    (port_thread_local::get_port().upgrade().expect(error).register(Arc::clone(&service.raw)), true)
+                }
+                ExportEntry::Exported(handle) => (*handle, false),
+            };
+            if have_to_replace {
+                *export_entry.borrow_mut() = ExportEntry::Exported(handle)
+            }
             handle.serialize(serializer)
         } else {
             panic!(error)
@@ -184,8 +205,8 @@ mod tests {
             {
                 let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl);
                 let foo_sarc = ServiceRef::from_service(foo_arc.clone());
-                let bytes = serde_cbor::to_vec(&foo_sarc).unwrap();
-                let handle_to_exchange: HandleToExchange = serde_cbor::from_slice(&bytes).unwrap();
+                let bytes = serde_json::to_vec(&foo_sarc).unwrap();
+                let handle_to_exchange: HandleToExchange = serde_json::from_slice(&bytes).unwrap();
                 assert_eq!(handle_to_exchange.0, 123);
                 assert_eq!(port.count.load(Ordering::SeqCst), 1);
             }
@@ -197,6 +218,15 @@ mod tests {
                 let handle_to_exchange: HandleToExchange = serde_cbor::from_slice(&bytes).unwrap();
                 assert_eq!(handle_to_exchange.0, 123);
                 assert_eq!(port.count.load(Ordering::SeqCst), 2);
+            }
+
+            {
+                let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl);
+                let foo_sarc = ServiceRef::from_service(foo_arc.clone());
+                let bytes = bincode::serialize(&foo_sarc).unwrap();
+                let handle_to_exchange: HandleToExchange = bincode::deserialize(&bytes).unwrap();
+                assert_eq!(handle_to_exchange.0, 123);
+                assert_eq!(port.count.load(Ordering::SeqCst), 3);
             }
         }
     }
