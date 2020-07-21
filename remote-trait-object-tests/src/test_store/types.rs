@@ -49,3 +49,11 @@ pub trait Store: Service {
     fn order_pizza_credit_card(&self, menu: Pizza, credit_card: ServiceRef<dyn CreditCard>) -> String;
     fn register_card(&mut self, credit_card: ServiceRef<dyn CreditCard>);
 }
+
+// Some variations of traits for tests
+
+/// This fails to compile without `remote_only = true`
+#[service(remote_only = true, serde_format = Bincode)]
+pub trait WeirdSmallStore: Service {
+    fn order_pizza(&self, menu: Pizza, money: &&&&&&&&&&&&&&u32) -> String;
+}

@@ -176,6 +176,36 @@ mod tests {
         // This must not fail
         drop(store);
     }
+
+    #[test]
+    fn credit_card_cast() {
+        let crate::transport::TransportEnds {
+            recv1,
+            send1,
+            recv2,
+            send2,
+        } = crate::transport::create();
+
+        let (signal_send, signal_recv) = bounded(0);
+
+        let store_runner = std::thread::Builder::new()
+            .name("Store Runner".to_owned())
+            .spawn(move || run_store((send2, recv2), signal_recv))
+            .unwrap();
+
+        let (_rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
+            Config::default_setup(),
+            send1,
+            recv1,
+            ServiceRef::from_service(create_null_service()),
+        );
+        let store: Box<dyn WeirdSmallStore> = store.cast_service().unwrap().into_remote();
+        assert_eq!(store.order_pizza(Pizza::Pepperoni, &&&&&&&&&&&&&&13), "Here's a delicious pepperoni pizza");
+
+        drop(store);
+        signal_send.send(()).unwrap();
+        store_runner.join().unwrap();
+    }
 }
 
 pub fn massive_no_export(n: usize) {

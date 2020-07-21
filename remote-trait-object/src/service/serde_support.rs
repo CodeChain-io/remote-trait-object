@@ -57,6 +57,21 @@ impl<T: ?Sized + Service> ServiceRef<T> {
         }
     }
 
+    pub fn cast_service<U: ?Sized + Service>(self) -> Result<ServiceRef<U>, ()> {
+        // TODO: Check the compatibility between traits using IDL
+        Ok(ServiceRef {
+            service: self.service,
+            _marker: PhantomData,
+        })
+    }
+
+    pub fn cast_service_without_compatibility_check<U: ?Sized + Service>(self) -> ServiceRef<U> {
+        ServiceRef {
+            service: self.service,
+            _marker: PhantomData,
+        }
+    }
+
     pub(crate) fn get_raw_export(self) -> ServiceToRegister {
         match self.service {
             ExportOrImport::Export(x) => match x.into_inner() {
