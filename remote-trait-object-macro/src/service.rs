@@ -87,9 +87,9 @@ impl MacroArgsRaw {
 impl Parse for MacroArgsRaw {
     fn parse(input: ParseStream) -> syn::parse::Result<Self> {
         let mut result = MacroArgsRaw::default();
-        let args = Punctuated::<TokenStream2, Token![,]>::parse_terminated(input)?;
+        let args = Punctuated::<syn::Expr, Token![,]>::parse_terminated(input)?;
         for arg in args {
-            result.update(arg)?;
+            result.update(quote! {#arg})?;
         }
         Ok(result)
     }
