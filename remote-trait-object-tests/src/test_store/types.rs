@@ -17,6 +17,18 @@
 use remote_trait_object::*;
 use serde::{Deserialize, Serialize};
 
+pub struct Bincode;
+
+impl SerdeFormat for Bincode {
+    fn to_vec<S: serde::Serialize>(s: &S) -> Result<Vec<u8>, ()> {
+        bincode::serialize(s).map_err(|_| ())
+    }
+
+    fn from_slice<D: serde::de::DeserializeOwned>(data: &[u8]) -> Result<D, ()> {
+        bincode::deserialize(data).map_err(|_| ())
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Pizza {
     Pepperoni,
@@ -29,7 +41,8 @@ pub trait CreditCard: Service {
     fn pay(&mut self, money: u32) -> Result<(), ()>;
 }
 
-#[service]
+/// We use a different format for test
+#[service(serde_format = Bincode)]
 pub trait Store: Service {
     fn order_pizza(&self, menu: Pizza, money: u32) -> String;
     fn order_coke(&self, flavor: &str, money: u32) -> String;
