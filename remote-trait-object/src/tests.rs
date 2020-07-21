@@ -153,3 +153,42 @@ fn macro1() {
     drop(remote);
     assert_eq!(port.register_len(), 0);
 }
+
+#[rto_macro::service]
+trait Hello: Service {
+    fn f(&self, v: &[(i32, i32)]) -> i32;
+}
+
+struct SimpleHello;
+impl Service for SimpleHello {}
+
+impl Hello for SimpleHello {
+    fn f(&self, v: &[(i32, i32)]) -> i32 {
+        v.iter().map(|(x, y)| x + y).sum()
+    }
+}
+
+/// This trait causes a compile error without `remote_only = true`
+#[rto_macro::service(remote_only = true)]
+trait HelloWithRef: Service {
+    fn f(&self, v: &[&(&i32, &i32)]) -> i32;
+}
+
+#[test]
+fn macro_remote_only() {
+    let port = Arc::new(TestPort::new());
+    let port_weak = Arc::downgrade(&port);
+
+    let object = Box::new(SimpleHello) as Box<dyn Hello>;
+
+    let handle = port.register(object.into_service_to_register().raw);
+    let remote = <Box<dyn HelloWithRef> as ImportRemote<dyn HelloWithRef>>::import_remote(port_weak, handle);
+
+    let source = vec![1, 2, 3, 4];
+    let source2 = vec![(&source[0], &source[1]), (&source[2], &source[3])];
+    let source3 = vec![&source2[0], &source2[1]];
+
+    assert_eq!(remote.f(&source3), 10);
+    drop(remote);
+    assert_eq!(port.register_len(), 0);
+}

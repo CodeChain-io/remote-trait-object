@@ -22,6 +22,10 @@ pub(super) fn generate_dispatcher(
     source_trait: &syn::ItemTrait,
     args: &MacroArgs,
 ) -> Result<TokenStream2, TokenStream2> {
+    if args.remote_only {
+        return Ok(TokenStream2::new())
+    }
+
     let env_path = create_env_path();
     let trait_ident = source_trait.ident.clone();
     let box_dispatcher_ident = quote::format_ident!("{}BoxDispatcher", trait_ident);

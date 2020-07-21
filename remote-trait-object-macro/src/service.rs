@@ -43,10 +43,12 @@ impl<T: Parse> Parse for SingleArg<T> {
 #[derive(Default)]
 struct MacroArgsRaw {
     pub serde_format: Option<syn::Path>,
+    pub remote_only: Option<syn::LitBool>,
 }
 
 struct MacroArgs {
     pub serde_format: syn::Path,
+    pub remote_only: bool,
 }
 
 impl MacroArgsRaw {
@@ -56,6 +58,13 @@ impl MacroArgsRaw {
         if x.arg_name == quote::format_ident!("serde_format") {
             let value = syn::parse2(x.arg_value)?;
             if self.serde_format.replace(value).is_some() {
+                Err(syn::parse::Error::new_spanned(ts, "Duplicated arguments"))
+            } else {
+                Ok(())
+            }
+        } else if x.arg_name == quote::format_ident!("remote_only") {
+            let value = syn::parse2(x.arg_value)?;
+            if self.remote_only.replace(value).is_some() {
                 Err(syn::parse::Error::new_spanned(ts, "Duplicated arguments"))
             } else {
                 Ok(())
@@ -70,6 +79,7 @@ impl MacroArgsRaw {
             serde_format: self
                 .serde_format
                 .unwrap_or_else(|| syn::parse2(quote! {remote_trait_object::macro_env::DefaultSerdeFormat}).unwrap()),
+            remote_only: self.remote_only.map(|b| b.value).unwrap_or(false),
         }
     }
 }
