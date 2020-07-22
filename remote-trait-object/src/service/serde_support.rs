@@ -26,7 +26,7 @@ use std::sync::Arc;
 /// Some data format traverses over data **twice**, first for size estimation and second for real encoding.
 /// Thus we use prepare secondary phase `Exported`.
 enum ExportEntry {
-    ReadyToExport(ServiceToRegister),
+    ReadyToExport(Skeleton),
     Exported(HandleToExchange),
 }
 
@@ -41,11 +41,9 @@ pub struct ServiceRef<T: ?Sized + Service> {
 }
 
 impl<T: ?Sized + Service> ServiceRef<T> {
-    pub fn from_service(service: impl IntoServiceToRegister<T>) -> Self {
+    pub fn from_service(service: impl IntoSkeleton<T>) -> Self {
         Self {
-            service: ExportOrImport::Export(RefCell::new(ExportEntry::ReadyToExport(
-                service.into_service_to_register(),
-            ))),
+            service: ExportOrImport::Export(RefCell::new(ExportEntry::ReadyToExport(service.into_skeleton()))),
             _marker: PhantomData,
         }
     }
@@ -72,7 +70,7 @@ impl<T: ?Sized + Service> ServiceRef<T> {
         }
     }
 
-    pub(crate) fn get_raw_export(self) -> ServiceToRegister {
+    pub(crate) fn get_raw_export(self) -> Skeleton {
         match self.service {
             ExportOrImport::Export(x) => match x.into_inner() {
                 ExportEntry::ReadyToExport(s) => s,
@@ -202,9 +200,9 @@ mod tests {
             }
         }
 
-        impl IntoServiceToRegister<dyn Foo> for Arc<dyn Foo> {
-            fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
-                crate::macro_env::create_service_to_register(Arc::new(FooImpl))
+        impl IntoSkeleton<dyn Foo> for Arc<dyn Foo> {
+            fn into_skeleton(self) -> crate::macro_env::Skeleton {
+                crate::macro_env::create_skeleton(Arc::new(FooImpl))
             }
         }
 

@@ -39,7 +39,7 @@ pub mod raw_exchange {
     //! This module is needed only you want to perform some raw exchange (or export/import) of services.
 
     pub use crate::service::export_import::{
-        export_service_into_handle, import_service_from_handle, ImportRemote, IntoServiceToRegister, ServiceToRegister,
+        export_service_into_handle, import_service_from_handle, ImportRemote, IntoSkeleton, Skeleton,
     };
     pub use crate::service::HandleToExchange;
 }
@@ -49,7 +49,7 @@ pub mod macro_env {
     pub use super::raw_exchange::*;
     pub use super::*;
     pub use port::Port;
-    pub use service::export_import::create_service_to_register;
+    pub use service::export_import::create_skeleton;
     pub use service::id::{IdMap, MethodIdAtomic, ID_ORDERING, MID_REG};
     pub use service::{Cbor as DefaultSerdeFormat, Dispatch, Handle, MethodId};
 }

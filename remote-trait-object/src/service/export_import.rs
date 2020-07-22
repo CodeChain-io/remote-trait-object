@@ -18,13 +18,13 @@ use super::Dispatch;
 use super::*;
 use std::sync::Arc;
 
-pub struct ServiceToRegister {
+pub struct Skeleton {
     pub(crate) raw: Arc<dyn Dispatch>,
 }
 
 // This belongs to macro_env
-pub fn create_service_to_register(raw: Arc<dyn Dispatch>) -> ServiceToRegister {
-    ServiceToRegister {
+pub fn create_skeleton(raw: Arc<dyn Dispatch>) -> Skeleton {
+    Skeleton {
         raw,
     }
 }
@@ -36,13 +36,13 @@ pub fn create_service_to_register(raw: Arc<dyn Dispatch>) -> ServiceToRegister {
 /// Unused T is for avoiding violation of the orphan rule
 /// T will be local type for the crate, and that makes it possible to
 /// ```ignore
-/// impl IntoServiceToRegister<dyn MyService> for Arc<dyn MyService>
+/// impl IntoSkeleton<dyn MyService> for Arc<dyn MyService>
 /// ```
-pub trait IntoServiceToRegister<T: ?Sized + Service> {
-    fn into_service_to_register(self) -> ServiceToRegister;
+pub trait IntoSkeleton<T: ?Sized + Service> {
+    fn into_skeleton(self) -> Skeleton;
 }
 
-/// Unused T is for avoiding violation of the orphan rule, like `IntoServiceToRegister`
+/// Unused T is for avoiding violation of the orphan rule, like `IntoSkeleton`
 pub trait ImportRemote<T: ?Sized + Service>: Sized {
     fn import_remote(port: Weak<dyn Port>, handle: HandleToExchange) -> Self;
 }
@@ -51,9 +51,9 @@ pub trait ImportRemote<T: ?Sized + Service>: Sized {
 
 pub fn export_service_into_handle<T: ?Sized + Service>(
     context: &crate::context::Context,
-    service: impl IntoServiceToRegister<T>,
+    service: impl IntoSkeleton<T>,
 ) -> HandleToExchange {
-    context.get_port().upgrade().unwrap().register(service.into_service_to_register().raw)
+    context.get_port().upgrade().unwrap().register(service.into_skeleton().raw)
 }
 
 pub fn import_service_from_handle<T: ?Sized + Service, P: ImportRemote<T>>(

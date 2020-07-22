@@ -46,9 +46,9 @@ impl crate::macro_env::Dispatch for NullServiceBoxDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::IntoServiceToRegister<dyn NullService> for Box<dyn NullService> {
-    fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
-        crate::macro_env::create_service_to_register(std::sync::Arc::new(NullServiceBoxDispatcher::new(self)))
+impl crate::macro_env::IntoSkeleton<dyn NullService> for Box<dyn NullService> {
+    fn into_skeleton(self) -> crate::macro_env::Skeleton {
+        crate::macro_env::create_skeleton(std::sync::Arc::new(NullServiceBoxDispatcher::new(self)))
     }
 }
 pub struct NullServiceArcDispatcher {}
@@ -62,9 +62,9 @@ impl crate::macro_env::Dispatch for NullServiceArcDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::IntoServiceToRegister<dyn NullService> for std::sync::Arc<dyn NullService> {
-    fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
-        crate::macro_env::create_service_to_register(std::sync::Arc::new(NullServiceArcDispatcher::new(self)))
+impl crate::macro_env::IntoSkeleton<dyn NullService> for std::sync::Arc<dyn NullService> {
+    fn into_skeleton(self) -> crate::macro_env::Skeleton {
+        crate::macro_env::create_skeleton(std::sync::Arc::new(NullServiceArcDispatcher::new(self)))
     }
 }
 pub struct NullServiceRwLockDispatcher {}
@@ -78,9 +78,9 @@ impl crate::macro_env::Dispatch for NullServiceRwLockDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::IntoServiceToRegister<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
-    fn into_service_to_register(self) -> crate::macro_env::ServiceToRegister {
-        crate::macro_env::create_service_to_register(std::sync::Arc::new(NullServiceRwLockDispatcher::new(self)))
+impl crate::macro_env::IntoSkeleton<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
+    fn into_skeleton(self) -> crate::macro_env::Skeleton {
+        crate::macro_env::create_skeleton(std::sync::Arc::new(NullServiceRwLockDispatcher::new(self)))
     }
 }
 #[derive(Debug)]
