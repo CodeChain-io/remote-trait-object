@@ -17,3 +17,7 @@ Both service object and remote object are expressed in Rust trait objects, which
 The actual communciation upon which such connection is constructed, is abstracted with `TransportRecv` and `TransportSend`.
 The implementation of the transport must be supplied by the user, and this library itself provides nothing about the communication.
 It can be a plain in-process communication, an Ipc, or even a networking, as you implement.
+
+## Flow
+
+![alt text](./flow.png "Call Flow")
