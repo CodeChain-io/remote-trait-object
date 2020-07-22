@@ -104,7 +104,7 @@ impl Context {
         (ctx, initial_service)
     }
 
-    pub fn register_service(&self, service: ServiceToRegister) -> HandleToExchange {
+    pub fn register_service(&self, service: Skeleton) -> HandleToExchange {
         self.port.as_ref().unwrap().register(service.raw)
     }
 

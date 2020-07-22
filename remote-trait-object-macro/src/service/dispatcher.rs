@@ -196,9 +196,9 @@ pub(super) fn generate_dispatcher(
                     #if_else_clauses_rwlock
                 }
             }
-            impl #env_path::IntoServiceToRegister<dyn #trait_ident> for Box<dyn #trait_ident> {
-                fn into_service_to_register(self) -> #env_path::ServiceToRegister {
-                    #env_path::create_service_to_register(std::sync::Arc::new(#box_dispatcher_ident::new(self)))
+            impl #env_path::IntoSkeleton<dyn #trait_ident> for Box<dyn #trait_ident> {
+                fn into_skeleton(self) -> #env_path::Skeleton {
+                    #env_path::create_skeleton(std::sync::Arc::new(#box_dispatcher_ident::new(self)))
                 }
             }
         }
@@ -222,9 +222,9 @@ pub(super) fn generate_dispatcher(
                     #if_else_clauses
                 }
             }
-            impl #env_path::IntoServiceToRegister<dyn #trait_ident> for Box<dyn #trait_ident> {
-                fn into_service_to_register(self) -> #env_path::ServiceToRegister {
-                    #env_path::create_service_to_register(std::sync::Arc::new(#box_dispatcher_ident::new(self)))
+            impl #env_path::IntoSkeleton<dyn #trait_ident> for Box<dyn #trait_ident> {
+                fn into_skeleton(self) -> #env_path::Skeleton {
+                    #env_path::create_skeleton(std::sync::Arc::new(#box_dispatcher_ident::new(self)))
                 }
             }
         }
@@ -252,9 +252,9 @@ pub(super) fn generate_dispatcher(
                     #if_else_clauses
                 }
             }
-            impl #env_path::IntoServiceToRegister<dyn #trait_ident> for std::sync::Arc<dyn #trait_ident> {
-                fn into_service_to_register(self) -> #env_path::ServiceToRegister {
-                    #env_path::create_service_to_register(std::sync::Arc::new(#arc_dispatcher_ident::new(self)))
+            impl #env_path::IntoSkeleton<dyn #trait_ident> for std::sync::Arc<dyn #trait_ident> {
+                fn into_skeleton(self) -> #env_path::Skeleton {
+                    #env_path::create_skeleton(std::sync::Arc::new(#arc_dispatcher_ident::new(self)))
                 }
             }
         }
@@ -279,9 +279,9 @@ pub(super) fn generate_dispatcher(
                 #if_else_clauses_rwlock
             }
         }
-        impl #env_path::IntoServiceToRegister<dyn #trait_ident> for std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>> {
-            fn into_service_to_register(self) -> #env_path::ServiceToRegister {
-                #env_path::create_service_to_register(std::sync::Arc::new(#rwlock_dispatcher_ident::new(self)))
+        impl #env_path::IntoSkeleton<dyn #trait_ident> for std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>> {
+            fn into_skeleton(self) -> #env_path::Skeleton {
+                #env_path::create_skeleton(std::sync::Arc::new(#rwlock_dispatcher_ident::new(self)))
             }
         }
     };

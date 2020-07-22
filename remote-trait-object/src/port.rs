@@ -22,7 +22,7 @@ pub use self::types::Handler;
 use crate::forwarder::ServiceForwarder;
 use crate::forwarder::{ServiceObjectId, DELETE_REQUEST};
 use crate::packet::{Packet, PacketView};
-use crate::raw_exchange::ServiceToRegister;
+use crate::raw_exchange::Skeleton;
 use crate::service::*;
 use client::Client;
 use std::sync::{
@@ -83,7 +83,7 @@ impl BasicPort {
         arc
     }
 
-    pub fn with_initial_service(client: Client, initial_service: ServiceToRegister) -> Arc<Self> {
+    pub fn with_initial_service(client: Client, initial_service: Skeleton) -> Arc<Self> {
         let arc = Arc::new(Self {
             registry: Arc::new(ServiceForwarder::with_initial_service(initial_service)),
             client: Some(client),

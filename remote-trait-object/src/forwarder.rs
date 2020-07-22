@@ -16,7 +16,7 @@
 
 use crate::packet::PacketView;
 use crate::port::{null_weak_port, Handler, Port};
-use crate::raw_exchange::ServiceToRegister;
+use crate::raw_exchange::Skeleton;
 use crate::service::Dispatch;
 use parking_lot::RwLock;
 use std::collections::{HashMap, VecDeque};
@@ -48,7 +48,7 @@ impl ServiceForwarder {
         }
     }
 
-    pub fn with_initial_service(service_object: ServiceToRegister) -> Self {
+    pub fn with_initial_service(service_object: Skeleton) -> Self {
         let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> = Default::default();
         service_objects.write().insert(INITIAL_SERVICE_OBJECT_ID, service_object.raw);
 
