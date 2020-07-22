@@ -109,7 +109,7 @@ fn init_logger() {
 
 fn create_remote_a(port: Arc<dyn Port>) -> Arc<dyn A> {
     let a: Arc<dyn A> = Arc::new(SimpleA::new());
-    let handle = port.register(a.into_skeleton().raw);
+    let handle = port.register_service(a.into_skeleton().raw);
     ImportRemote::import_remote(Arc::downgrade(&port), handle)
 }
 

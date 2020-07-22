@@ -105,7 +105,7 @@ impl Context {
     }
 
     pub fn register_service(&self, service: Skeleton) -> HandleToExchange {
-        self.port.as_ref().unwrap().register(service.raw)
+        self.port.as_ref().unwrap().register_service(service.raw)
     }
 
     pub(crate) fn get_port(&self) -> Weak<dyn Port> {

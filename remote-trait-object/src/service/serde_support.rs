@@ -131,7 +131,13 @@ impl<T: ?Sized + Service> Serialize for ServiceRef<T> {
             let (handle, have_to_replace) = match &*export_entry.borrow() {
                 ExportEntry::ReadyToExport(service) => {
                     debug_assert_eq!(Arc::strong_count(&service.raw), 1);
-                    (port_thread_local::get_port().upgrade().expect(error).register(Arc::clone(&service.raw)), true)
+                    (
+                        port_thread_local::get_port()
+                            .upgrade()
+                            .expect(error)
+                            .register_service(Arc::clone(&service.raw)),
+                        true,
+                    )
                 }
                 ExportEntry::Exported(handle) => (*handle, false),
             };
@@ -179,7 +185,7 @@ mod tests {
                 unimplemented!()
             }
 
-            fn register(&self, _service_object: Arc<dyn Dispatch>) -> HandleToExchange {
+            fn register_service(&self, _service_object: Arc<dyn Dispatch>) -> HandleToExchange {
                 self.count.fetch_add(1, Ordering::SeqCst);
                 HandleToExchange(123)
             }

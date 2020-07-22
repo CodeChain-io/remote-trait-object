@@ -33,7 +33,7 @@ use std::sync::{
 pub trait Port: std::fmt::Debug + Send + Sync + 'static {
     fn call(&self, packet: PacketView) -> Packet;
     fn delete_request(&self, id: ServiceObjectId);
-    fn register(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange;
+    fn register_service(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange;
 }
 
 /// Weak::new() is not implemented for ?Sized.
@@ -66,7 +66,7 @@ impl Port for BasicPort {
         assert!(self.client.as_ref().unwrap().call(packet.view()).data().is_empty());
     }
 
-    fn register(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange {
+    fn register_service(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange {
         HandleToExchange(self.registry.register_service_object(service_object))
     }
 }

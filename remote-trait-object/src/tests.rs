@@ -96,7 +96,7 @@ impl Port for TestPort {
         self.dispatch_map.lock().remove(id);
     }
 
-    fn register(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange {
+    fn register_service(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange {
         HandleToExchange(self.dispatch_map.lock().insert(service_object))
     }
 }
@@ -136,7 +136,7 @@ fn macro1() {
     let object = Box::new(MyObject {
         mul: 4,
     }) as Box<dyn Service1>;
-    let handle = port.register(object.into_skeleton().raw);
+    let handle = port.register_service(object.into_skeleton().raw);
     let remote = <Box<dyn Service1> as ImportRemote<dyn Service1>>::import_remote(port_weak, handle);
 
     assert_eq!(remote.f1(1, &2, &[3, 4], (5, 6), &(7, "8".to_owned())), (1 + 2 + 3 + 4 + 5 + 6 + 7 + 8) * 4);
@@ -173,7 +173,7 @@ fn macro_remote_only() {
 
     let object = Box::new(SimpleHello) as Box<dyn Hello>;
 
-    let handle = port.register(object.into_skeleton().raw);
+    let handle = port.register_service(object.into_skeleton().raw);
     let remote = <Box<dyn HelloWithRef> as ImportRemote<dyn HelloWithRef>>::import_remote(port_weak, handle);
 
     let source = vec![1, 2, 3, 4];

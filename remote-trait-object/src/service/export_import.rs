@@ -53,7 +53,7 @@ pub fn export_service_into_handle<T: ?Sized + Service>(
     context: &crate::context::Context,
     service: impl IntoSkeleton<T>,
 ) -> HandleToExchange {
-    context.get_port().upgrade().unwrap().register(service.into_skeleton().raw)
+    context.get_port().upgrade().unwrap().register_service(service.into_skeleton().raw)
 }
 
 pub fn import_service_from_handle<T: ?Sized + Service, P: ImportRemote<T>>(
