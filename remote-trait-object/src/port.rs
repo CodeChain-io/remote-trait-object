@@ -72,9 +72,9 @@ impl Port for BasicPort {
 }
 
 impl BasicPort {
-    pub fn new(client: Client) -> Arc<Self> {
+    pub fn new(client: Client, meta_sevice: Skeleton) -> Arc<Self> {
         let arc = Arc::new(Self {
-            registry: Arc::new(ServiceForwarder::new()),
+            registry: Arc::new(ServiceForwarder::new(meta_sevice)),
             client: Some(client),
             no_drop: AtomicBool::new(false),
         });
@@ -83,9 +83,9 @@ impl BasicPort {
         arc
     }
 
-    pub fn with_initial_service(client: Client, initial_service: Skeleton) -> Arc<Self> {
+    pub fn with_initial_service(client: Client, meta_sevice: Skeleton, initial_service: Skeleton) -> Arc<Self> {
         let arc = Arc::new(Self {
-            registry: Arc::new(ServiceForwarder::with_initial_service(initial_service)),
+            registry: Arc::new(ServiceForwarder::with_initial_service(meta_sevice, initial_service)),
             client: Some(client),
             no_drop: AtomicBool::new(false),
         });
