@@ -25,7 +25,8 @@ use std::sync::{Arc, Weak};
 
 pub type ServiceObjectId = u32;
 pub const DELETE_REQUEST: crate::service::MethodId = std::u32::MAX;
-pub const INITIAL_SERVICE_OBJECT_ID: ServiceObjectId = 0;
+pub const META_SERVICE_OBJECT_ID: ServiceObjectId = 0;
+pub const INITIAL_SERVICE_OBJECT_ID: ServiceObjectId = 1;
 
 pub struct ServiceForwarder {
     service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>>,
@@ -40,7 +41,16 @@ impl fmt::Debug for ServiceForwarder {
 }
 
 impl ServiceForwarder {
-    pub fn new() -> Self {
+    pub fn new(meta_service: Skeleton) -> Self {
+        let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> = Default::default();
+        service_objects.write().insert(META_SERVICE_OBJECT_ID, meta_service.raw);
+        let mut available_ids = VecDeque::new();
+        for i in 0u32..100 {
+            if i != META_SERVICE_OBJECT_ID {
+                available_ids.push_back(i);
+            }
+        }
+
         Self {
             service_objects: Default::default(),
             available_ids: RwLock::new((0u32..100).collect()),
@@ -48,13 +58,13 @@ impl ServiceForwarder {
         }
     }
 
-    pub fn with_initial_service(service_object: Skeleton) -> Self {
+    pub fn with_initial_service(meta_service: Skeleton, service_object: Skeleton) -> Self {
         let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> = Default::default();
+        service_objects.write().insert(META_SERVICE_OBJECT_ID, meta_service.raw);
         service_objects.write().insert(INITIAL_SERVICE_OBJECT_ID, service_object.raw);
-
         let mut available_ids = VecDeque::new();
         for i in 0u32..100 {
-            if i != INITIAL_SERVICE_OBJECT_ID {
+            if i != META_SERVICE_OBJECT_ID && i != INITIAL_SERVICE_OBJECT_ID {
                 available_ids.push_back(i);
             }
         }
@@ -107,12 +117,6 @@ impl ServiceForwarder {
     /// Be careful of this circular reference
     pub fn set_port(&self, port: Weak<dyn Port>) {
         *self.port.write() = port
-    }
-}
-
-impl Default for ServiceForwarder {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
