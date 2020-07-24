@@ -16,10 +16,10 @@
 
 use crate::packet::{Packet, PacketView, SlotId};
 use crate::queue::Queue;
-use crate::transport::TransportSend;
+use crate::transport::{RecvError, TransportRecv, TransportSend};
 use crate::Config;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
-use crossbeam::channel::{bounded, Receiver, RecvError, Sender};
+use crossbeam::channel::{bounded, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::time;
@@ -28,7 +28,7 @@ use std::time;
 #[derive(Debug)]
 struct CallSlot {
     id: SlotId,
-    response: Receiver<Packet>,
+    response: Receiver<Result<Packet, RecvError>>,
 }
 
 #[derive(Debug)]
@@ -41,7 +41,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(config: Config, transport_send: Arc<dyn TransportSend>, transport_recv: Receiver<Packet>) -> Self {
+    pub fn new(config: Config, transport_send: Arc<dyn TransportSend>, transport_recv: Box<dyn TransportRecv>) -> Self {
         let (joined_event_sender, joined_event_receiver) = bounded(1);
         let callslot_size = SlotId::new(config.call_slots as u32);
         let call_slots = Arc::new(Queue::new(callslot_size.as_usize()));
@@ -68,9 +68,7 @@ impl Client {
                 thread::Builder::new()
                     .name(format!("[{}] client", name))
                     .spawn(move || {
-                        if let Err(RecvError) = receive_loop(transport_recv, to_slot_receivers) {
-                            // Multiplexer is closed
-                        }
+                        receive_loop(transport_recv, to_slot_receivers);
                         joined_event_sender.send(()).unwrap();
                     })
                     .unwrap(),
@@ -97,7 +95,9 @@ impl Client {
         );
 
         self.call_slots.push(slot).expect("Client does not close the queue");
-        response_packet
+
+        // TODO: handle the error
+        response_packet.unwrap()
     }
 
     pub fn shutdown(&mut self) {
@@ -122,12 +122,21 @@ impl Drop for Client {
     }
 }
 
-fn receive_loop(transport_recv: Receiver<Packet>, to_slot_receivers: Vec<Sender<Packet>>) -> Result<(), RecvError> {
+fn receive_loop(transport_recv: Box<dyn TransportRecv>, to_slot_receivers: Vec<Sender<Result<Packet, RecvError>>>) {
     loop {
-        let packet = transport_recv.recv()?;
-        let slot_id = packet.view().slot();
-        to_slot_receivers[slot_id.as_usize()]
-            .send(packet)
-            .expect("Slot receivers are managed in Client. Client must be dropped after this thread");
+        match transport_recv.recv(None) {
+            Ok(x) => {
+                let packet = Packet::new_from_buffer(x);
+                let slot_id = packet.view().slot();
+                to_slot_receivers[slot_id.as_usize()]
+                    .send(Ok(packet))
+                    .expect("Slot receivers are managed in Client. Client must be dropped after this thread");
+            }
+            Err(RecvError::Termination) => return,
+            Err(_err) => {
+                // TODO: Broadcast the error to all **active** call slots
+                return
+            }
+        };
     }
 }
