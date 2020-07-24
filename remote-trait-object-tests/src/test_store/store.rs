@@ -16,7 +16,6 @@
 
 use super::types::*;
 use crate::transport::{IntraRecv, IntraSend};
-use crossbeam::channel::Receiver;
 use remote_trait_object::*;
 
 struct MyPizzaStore {
@@ -75,9 +74,9 @@ impl Store for MyPizzaStore {
 
 impl Service for MyPizzaStore {}
 
-pub fn run_store(transport: (IntraSend, IntraRecv), end_signal: Receiver<()>) {
+pub fn run_store(transport: (IntraSend, IntraRecv)) {
     let (transport_send, transport_recv) = transport;
-    let (_rto_context, _null): (Context, ServiceRef<dyn NullService>) = Context::with_initial_service(
+    let (rto_context, _null): (Context, ServiceRef<dyn NullService>) = Context::with_initial_service(
         Config::default_setup(),
         transport_send,
         transport_recv,
@@ -86,5 +85,5 @@ pub fn run_store(transport: (IntraSend, IntraRecv), end_signal: Receiver<()>) {
             registered_card: None,
         }) as Box<dyn Store>),
     );
-    end_signal.recv().unwrap();
+    rto_context.firm_close(None).unwrap();
 }
