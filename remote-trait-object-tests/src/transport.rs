@@ -62,7 +62,7 @@ impl TransportRecv for IntraRecv {
                 Ok(data) => data,
                 Err(_) => {
                     debug!("Counterparty connection is closed in Intra");
-                    return Err(RecvError::Termination)
+                    return Err(RecvError::Custom)
                 }
             },
             i if i == terminator_index => {
