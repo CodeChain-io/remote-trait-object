@@ -21,7 +21,7 @@ pub enum SendError {
     Custom,
 }
 
-pub trait TransportSend: Send {
+pub trait TransportSend: Sync + Send + std::fmt::Debug {
     /// It might block until counterparty's recv(). Even if not, the order is still guaranteed.
     fn send(&self, data: &[u8]) -> Result<(), SendError>;
 }

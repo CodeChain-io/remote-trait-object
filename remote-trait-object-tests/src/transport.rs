@@ -17,6 +17,7 @@
 use crossbeam::channel::{bounded, Receiver, Select, SelectTimeoutError, Sender};
 use remote_trait_object::transport::*;
 
+#[derive(Debug)]
 pub struct IntraSend(Sender<Vec<u8>>);
 
 impl TransportSend for IntraSend {
