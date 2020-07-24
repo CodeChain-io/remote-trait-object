@@ -14,12 +14,30 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::packet::{Packet, PacketView};
+use crate::packet::PacketView;
 use crate::transport::{RecvError, Terminate, TransportRecv};
 use crate::Config;
 use crossbeam::channel::{self, Receiver, Sender};
 use parking_lot::Mutex;
 use std::thread;
+
+pub struct MultiplexedRecv {
+    recv: Receiver<Result<Vec<u8>, RecvError>>,
+}
+
+impl TransportRecv for MultiplexedRecv {
+    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError> {
+        if let Some(timeout) = timeout {
+            self.recv.recv_timeout(timeout).unwrap()
+        } else {
+            self.recv.recv().unwrap()
+        }
+    }
+
+    fn create_terminator(&self) -> Box<dyn Terminate> {
+        unreachable!()
+    }
+}
 
 #[derive(Debug)]
 pub enum ForwardResult {
@@ -32,8 +50,8 @@ pub trait Forward {
 }
 
 pub struct MultiplexResult {
-    pub request_recv: Receiver<Packet>,
-    pub response_recv: Receiver<Packet>,
+    pub request_recv: MultiplexedRecv,
+    pub response_recv: MultiplexedRecv,
     pub multiplexer: Multiplexer,
 }
 
@@ -62,8 +80,12 @@ impl Multiplexer {
             .unwrap();
 
         MultiplexResult {
-            request_recv,
-            response_recv,
+            request_recv: MultiplexedRecv {
+                recv: request_recv,
+            },
+            response_recv: MultiplexedRecv {
+                recv: response_recv,
+            },
             multiplexer: Multiplexer {
                 receiver_thread: Some(receiver_thread),
                 receiver_terminator,
@@ -79,14 +101,14 @@ impl Multiplexer {
 
 fn receiver_loop<Forwarder: Forward, Receiver: TransportRecv>(
     transport_recv: Receiver,
-    request_send: Sender<Packet>,
-    response_send: Sender<Packet>,
+    request_send: Sender<Result<Vec<u8>, RecvError>>,
+    response_send: Sender<Result<Vec<u8>, RecvError>>,
 ) {
     loop {
         let message = match transport_recv.recv(None) {
-            Err(RecvError::TimeOut) => panic!(),
-            Err(RecvError::Termination) => {
-                debug!("transport_recv is closed in multiplex");
+            Err(err) => {
+                request_send.send(Err(err.clone())).unwrap();
+                response_send.send(Err(err)).unwrap();
                 return
             }
             Ok(data) => data,
@@ -95,12 +117,10 @@ fn receiver_loop<Forwarder: Forward, Receiver: TransportRecv>(
         let packet_view = PacketView::new(&message);
         trace!("Receive message in multiplex {}", packet_view);
         let forward_result = Forwarder::forward(packet_view);
-        let packet = Packet::new_from_buffer(message);
 
         match forward_result {
-            ForwardResult::Request => request_send.send(packet).unwrap(),
-
-            ForwardResult::Response => response_send.send(packet).unwrap(),
+            ForwardResult::Request => request_send.send(Ok(message)).unwrap(),
+            ForwardResult::Response => response_send.send(Ok(message)).unwrap(),
         }
     }
 }

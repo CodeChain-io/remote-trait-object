@@ -26,7 +26,7 @@ pub trait TransportSend: Sync + Send + std::fmt::Debug {
     fn send(&self, data: &[u8]) -> Result<(), SendError>;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum RecvError {
     TimeOut,
     Termination,

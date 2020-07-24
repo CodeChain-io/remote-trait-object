@@ -17,7 +17,7 @@
 use super::types::Handler;
 use crate::packet::Packet;
 use crate::queue::{PopError, Queue};
-use crate::transport::TransportSend;
+use crate::transport::{RecvError, TransportRecv, TransportSend};
 use crate::Config;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{self, Receiver};
@@ -35,7 +35,7 @@ impl Server {
         config: Config,
         handler: Arc<H>,
         transport_send: Arc<dyn TransportSend>,
-        transport_recv: Receiver<Packet>,
+        transport_recv: Box<dyn TransportRecv>,
     ) -> Self
     where
         H: Handler + Send + 'static, {
@@ -81,14 +81,23 @@ fn receiver<H>(
     config: Config,
     handler: Arc<H>,
     transport_send: Arc<dyn TransportSend>,
-    transport_recv: Receiver<Packet>,
+    transport_recv: Box<dyn TransportRecv>,
 ) where
     H: Handler + 'static, {
     let received_packets = Arc::new(Queue::new(100));
     let joiners = create_handler_threads(config, handler, transport_send, Arc::clone(&received_packets));
 
-    while let Ok(request) = transport_recv.recv() {
-        received_packets.push(request).expect("Queue will close after this loop");
+    loop {
+        match transport_recv.recv(None) {
+            Ok(request) => {
+                received_packets.push(Packet::new_from_buffer(request)).expect("Queue will close after this loop")
+            }
+            Err(RecvError::Termination) => break,
+            Err(_err) => {
+                // TODO: report this error to the context
+                break
+            }
+        }
     }
     // transport_recv is closed.
 
