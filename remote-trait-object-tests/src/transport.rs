@@ -20,8 +20,8 @@ use remote_trait_object::transport::*;
 pub struct IntraSend(Sender<Vec<u8>>);
 
 impl TransportSend for IntraSend {
-    fn send(&self, data: &[u8]) {
-        self.0.send(data.to_vec()).unwrap();
+    fn send(&self, data: &[u8]) -> Result<(), SendError> {
+        self.0.send(data.to_vec()).map_err(|_| SendError::Custom)
     }
 }
 

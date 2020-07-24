@@ -148,7 +148,7 @@ fn sender_loop(
                 }
             },
         };
-        transport_sender.send(&data.into_vec());
+        transport_sender.send(&data.into_vec()).unwrap();
     }
 }
 
