@@ -16,6 +16,7 @@
 
 use crate::packet::{Packet, PacketView, SlotId};
 use crate::queue::Queue;
+use crate::transport::TransportSend;
 use crate::Config;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{bounded, Receiver, RecvError, Sender};
@@ -34,13 +35,13 @@ struct CallSlot {
 pub struct Client {
     config: Config,
     call_slots: Arc<Queue<CallSlot>>,
-    transport_send: Sender<Packet>,
+    transport_send: Arc<dyn TransportSend>,
     receiver_thread: Option<thread::JoinHandle<()>>,
     joined_event_receiver: Receiver<()>,
 }
 
 impl Client {
-    pub fn new(config: Config, transport_send: Sender<Packet>, transport_recv: Receiver<Packet>) -> Self {
+    pub fn new(config: Config, transport_send: Arc<dyn TransportSend>, transport_recv: Receiver<Packet>) -> Self {
         let (joined_event_sender, joined_event_receiver) = bounded(1);
         let callslot_size = SlotId::new(config.call_slots as u32);
         let call_slots = Arc::new(Queue::new(callslot_size.as_usize()));
@@ -87,7 +88,8 @@ impl Client {
             packet
         };
 
-        self.transport_send.send(packet).expect("port::Client::call is called after mulitplexer is dropped");
+        // TODO: handle the error
+        self.transport_send.send(packet.buffer()).unwrap();
         let response_packet = slot.response.recv().expect(
             "counterparty send is managed by client. \n\
         This error might be due to drop after disconnection of the two remote-trait-object contexts. \n\

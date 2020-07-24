@@ -58,11 +58,12 @@ impl Context {
             multiplexer,
             request_recv,
             response_recv,
-            multiplexed_send,
-        } = Multiplexer::multiplex::<R, S, PacketForward>(config.clone(), transport_send, transport_recv);
-        let client = Client::new(config.clone(), multiplexed_send.clone(), response_recv);
+        } = Multiplexer::multiplex::<R, PacketForward>(config.clone(), transport_recv);
+        let transport_send = Arc::new(transport_send) as Arc<dyn TransportSend>;
+
+        let client = Client::new(config.clone(), Arc::clone(&transport_send), response_recv);
         let port = BasicPort::new(client);
-        let server = Server::new(config, port.get_registry(), multiplexed_send, request_recv);
+        let server = Server::new(config, port.get_registry(), transport_send, request_recv);
 
         Context {
             multiplexer: Some(multiplexer),
@@ -86,11 +87,12 @@ impl Context {
             multiplexer,
             request_recv,
             response_recv,
-            multiplexed_send,
-        } = Multiplexer::multiplex::<R, S, PacketForward>(config.clone(), transport_send, transport_recv);
-        let client = Client::new(config.clone(), multiplexed_send.clone(), response_recv);
+        } = Multiplexer::multiplex::<R, PacketForward>(config.clone(), transport_recv);
+        let transport_send = Arc::new(transport_send) as Arc<dyn TransportSend>;
+
+        let client = Client::new(config.clone(), Arc::clone(&transport_send), response_recv);
         let port = BasicPort::with_initial_service(client, initial_service.get_raw_export());
-        let server = Server::new(config, port.get_registry(), multiplexed_send, request_recv);
+        let server = Server::new(config, port.get_registry(), transport_send, request_recv);
 
         let initial_handle = crate::service::HandleToExchange(crate::forwarder::INITIAL_SERVICE_OBJECT_ID);
         let port_weak = Arc::downgrade(&port);

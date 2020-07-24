@@ -17,9 +17,10 @@
 use super::types::Handler;
 use crate::packet::Packet;
 use crate::queue::{PopError, Queue};
+use crate::transport::TransportSend;
 use crate::Config;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
-use crossbeam::channel::{self, Receiver, Sender};
+use crossbeam::channel::{self, Receiver};
 use std::sync::Arc;
 use std::thread;
 use std::time;
@@ -33,7 +34,7 @@ impl Server {
     pub fn new<H>(
         config: Config,
         handler: Arc<H>,
-        transport_send: Sender<Packet>,
+        transport_send: Arc<dyn TransportSend>,
         transport_recv: Receiver<Packet>,
     ) -> Self
     where
@@ -76,8 +77,12 @@ impl Drop for Server {
     }
 }
 
-fn receiver<H>(config: Config, handler: Arc<H>, transport_send: Sender<Packet>, transport_recv: Receiver<Packet>)
-where
+fn receiver<H>(
+    config: Config,
+    handler: Arc<H>,
+    transport_send: Arc<dyn TransportSend>,
+    transport_recv: Receiver<Packet>,
+) where
     H: Handler + 'static, {
     let received_packets = Arc::new(Queue::new(100));
     let joiners = create_handler_threads(config, handler, transport_send, Arc::clone(&received_packets));
@@ -96,14 +101,18 @@ where
 fn create_handler_threads<H>(
     config: Config,
     handler: Arc<H>,
-    transport_send: Sender<Packet>,
+    transport_send: Arc<dyn TransportSend>,
     received_packets: Arc<Queue<Packet>>,
 ) -> Vec<thread::JoinHandle<()>>
 where
     H: Handler + 'static, {
     let mut joins = Vec::new();
 
-    fn handler_loop<H: Handler>(handler: Arc<H>, transport_send: Sender<Packet>, received_packets: Arc<Queue<Packet>>) {
+    fn handler_loop<H: Handler>(
+        handler: Arc<H>,
+        transport_send: Arc<dyn TransportSend>,
+        received_packets: Arc<Queue<Packet>>,
+    ) {
         loop {
             let request = match received_packets.pop(None) {
                 Ok(packet) => packet,
@@ -116,8 +125,8 @@ where
             trace!("Handler result in Port Server {:?}", response);
             let mut response_packet = Packet::new_response_from_request(request.view());
             response_packet.append_data(&response);
-            if let Err(err) = transport_send.send(response_packet) {
-                trace!("Multiplexer is dropped while sending a packet {:?}", err.into_inner());
+            if let Err(_err) = transport_send.send(response_packet.buffer()) {
+                // TODO: report the error to the context
                 break
             };
         }
@@ -125,7 +134,7 @@ where
 
     for i in 0..config.server_threads {
         let packet_queue_ = Arc::clone(&received_packets);
-        let transport_send_ = transport_send.clone();
+        let transport_send_ = Arc::clone(&transport_send);
         let handler_ = Arc::clone(&handler);
 
         let join_handle = thread::Builder::new()
