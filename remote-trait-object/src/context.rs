@@ -75,11 +75,18 @@ impl Config {
 }
 
 pub struct Context {
+    config: Config,
     multiplexer: Option<Multiplexer>,
     server: Option<Server>,
     port: Option<Arc<BasicPort>>,
     meta_service: Option<Box<dyn MetaService>>,
     firm_close_barrier: Arc<Barrier>,
+}
+
+impl std::fmt::Debug for Context {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Context").field("config", &self.config).finish()
+    }
 }
 
 impl Context {
@@ -102,7 +109,7 @@ impl Context {
             client,
             (Box::new(MetaServiceImpl::new(Arc::clone(&firm_close_barrier))) as Box<dyn MetaService>).into_skeleton(),
         );
-        let server = Server::new(config, port.get_registry(), transport_send, Box::new(request_recv));
+        let server = Server::new(config.clone(), port.get_registry(), transport_send, Box::new(request_recv));
 
         let port_weak = Arc::downgrade(&port);
         let meta_service = <Box<dyn MetaService> as ImportRemote<dyn MetaService>>::import_remote(
@@ -111,6 +118,7 @@ impl Context {
         );
 
         Context {
+            config,
             multiplexer: Some(multiplexer),
             server: Some(server),
             port: Some(port),
@@ -145,7 +153,7 @@ impl Context {
             (Box::new(MetaServiceImpl::new(Arc::clone(&firm_close_barrier))) as Box<dyn MetaService>).into_skeleton(),
             initial_service.get_raw_export(),
         );
-        let server = Server::new(config, port.get_registry(), transport_send, Box::new(request_recv));
+        let server = Server::new(config.clone(), port.get_registry(), transport_send, Box::new(request_recv));
 
         let port_weak = Arc::downgrade(&port) as Weak<dyn Port>;
         let meta_service = <Box<dyn MetaService> as ImportRemote<dyn MetaService>>::import_remote(
@@ -155,6 +163,7 @@ impl Context {
         let initial_handle = crate::service::HandleToExchange(crate::forwarder::INITIAL_SERVICE_OBJECT_ID);
 
         let ctx = Context {
+            config,
             multiplexer: Some(multiplexer),
             server: Some(server),
             port: Some(port),
