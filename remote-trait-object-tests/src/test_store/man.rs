@@ -16,7 +16,6 @@
 
 use super::store::run_store;
 use super::types::*;
-use crossbeam::channel::bounded;
 use remote_trait_object::*;
 
 struct MyCreditCard {
@@ -43,15 +42,10 @@ fn test_runner(f: impl Fn(Box<dyn Store>)) {
         recv2,
         send2,
     } = crate::transport::create();
+    let store_runner =
+        std::thread::Builder::new().name("Store Runner".to_owned()).spawn(move || run_store((send2, recv2))).unwrap();
 
-    let (signal_send, signal_recv) = bounded(0);
-
-    let store_runner = std::thread::Builder::new()
-        .name("Store Runner".to_owned())
-        .spawn(move || run_store((send2, recv2), signal_recv))
-        .unwrap();
-
-    let (_rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
+    let (rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
         Config::default_setup(),
         send1,
         recv1,
@@ -61,7 +55,7 @@ fn test_runner(f: impl Fn(Box<dyn Store>)) {
 
     f(store);
 
-    signal_send.send(()).unwrap();
+    rto_context.firm_close(None).unwrap();
     store_runner.join().unwrap();
 }
 
@@ -149,11 +143,9 @@ mod tests {
             send2,
         } = crate::transport::create();
 
-        let (signal_send, signal_recv) = bounded(0);
-
         let store_runner = std::thread::Builder::new()
             .name("Store Runner".to_owned())
-            .spawn(move || run_store((send2, recv2), signal_recv))
+            .spawn(move || run_store((send2, recv2)))
             .unwrap();
 
         let (rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
@@ -169,12 +161,11 @@ mod tests {
         }) as Box<dyn CreditCard>;
         store.register_card(ServiceRef::from_service(card));
 
-        signal_send.send(()).unwrap();
-        store_runner.join().unwrap();
-
         rto_context.disable_garbage_collection();
         // This must not fail
         drop(store);
+        rto_context.firm_close(None).unwrap();
+        store_runner.join().unwrap();
     }
 
     #[test]
@@ -185,15 +176,12 @@ mod tests {
             recv2,
             send2,
         } = crate::transport::create();
-
-        let (signal_send, signal_recv) = bounded(0);
-
         let store_runner = std::thread::Builder::new()
             .name("Store Runner".to_owned())
-            .spawn(move || run_store((send2, recv2), signal_recv))
+            .spawn(move || run_store((send2, recv2)))
             .unwrap();
 
-        let (_rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
+        let (rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
             Config::default_setup(),
             send1,
             recv1,
@@ -203,7 +191,8 @@ mod tests {
         assert_eq!(store.order_pizza(Pizza::Pepperoni, &&&&&&&&&&&&&&13), "Here's a delicious pepperoni pizza");
 
         drop(store);
-        signal_send.send(()).unwrap();
+        rto_context.firm_close(None).unwrap();
+
         store_runner.join().unwrap();
     }
 }
