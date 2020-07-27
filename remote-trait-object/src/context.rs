@@ -19,8 +19,9 @@ use crate::port::{client::Client, server::Server, BasicPort, Port};
 use crate::transport::multiplex::{self, ForwardResult, MultiplexResult, Multiplexer};
 use crate::transport::{TransportRecv, TransportSend};
 use crate::{raw_exchange::*, Service, ServiceRef};
-use serde::{Deserialize, Serialize};
+use parking_lot::Mutex;
 use std::sync::{Arc, Barrier, Weak};
+use threadpool::ThreadPool;
 
 mod meta_service {
     use super::*;
@@ -54,22 +55,24 @@ mod meta_service {
 }
 use meta_service::{MetaService, MetaServiceImpl};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Config {
     /// This will be appended to the names of various threads spawned by RTO, for an easy debug.
     pub name: String,
-    pub server_threads: usize,
     pub call_slots: usize,
     pub call_timeout: std::time::Duration,
+
+    pub thread_pool: Arc<Mutex<threadpool::ThreadPool>>,
 }
 
 impl Config {
     pub fn default_setup() -> Self {
         Self {
             name: "my rto".to_owned(),
-            server_threads: 8,
             call_slots: 512,
             call_timeout: std::time::Duration::from_millis(1000),
+
+            thread_pool: Arc::new(Mutex::new(ThreadPool::new(8))),
         }
     }
 }
