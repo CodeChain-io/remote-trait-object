@@ -57,23 +57,6 @@ impl<T> Queue<T> {
             recver.recv().map_err(|_| PopError::QueueClosed)
         }
     }
-
-    // FIXME: we need a better method to close channel
-    pub fn close(&self) {
-        // Try to get one of sender and recv.
-        // Since there is no case that both sender and recv are locked, we will eventually get one of the locks.
-        // If we drop one of them, the other part will drop automatically.
-        loop {
-            if let Some(mut guard) = self.recver.try_lock() {
-                guard.take().unwrap();
-                break
-            }
-            if let Some(mut guard) = self.sender.try_lock() {
-                guard.take().unwrap();
-                break
-            }
-        }
-    }
 }
 
 #[derive(Debug)]
