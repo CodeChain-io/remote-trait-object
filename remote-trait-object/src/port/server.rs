@@ -16,11 +16,11 @@
 
 use super::types::Handler;
 use crate::packet::Packet;
-use crate::queue::{PopError, Queue};
 use crate::transport::{RecvError, TransportRecv, TransportSend};
 use crate::Config;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{self, Receiver};
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time;
@@ -77,6 +77,23 @@ impl Drop for Server {
     }
 }
 
+fn handle_single_call<H: Handler>(
+    packet: Packet,
+    handler: Arc<H>,
+    transport_send: Arc<dyn TransportSend>,
+    count: Arc<AtomicI32>,
+) {
+    let response = handler.handle(packet.view());
+    let mut response_packet = Packet::new_response_from_request(packet.view());
+    response_packet.append_data(&response);
+    if let Err(_err) = transport_send.send(response_packet.buffer()) {
+        // TODO: report the error to the context
+        count.fetch_sub(1, Ordering::Release);
+        return
+    };
+    count.fetch_sub(1, Ordering::Release);
+}
+
 fn receiver<H>(
     config: Config,
     handler: Arc<H>,
@@ -84,13 +101,17 @@ fn receiver<H>(
     transport_recv: Box<dyn TransportRecv>,
 ) where
     H: Handler + 'static, {
-    let received_packets = Arc::new(Queue::new(100));
-    let joiners = create_handler_threads(config, handler, transport_send, Arc::clone(&received_packets));
-
+    let count = Arc::new(AtomicI32::new(0));
     loop {
         match transport_recv.recv(None) {
             Ok(request) => {
-                received_packets.push(Packet::new_from_buffer(request)).expect("Queue will close after this loop")
+                let packet = Packet::new_from_buffer(request);
+                let handler = Arc::clone(&handler);
+                let transport_send = Arc::clone(&transport_send);
+
+                count.fetch_add(1, Ordering::Release);
+                let count = Arc::clone(&count);
+                config.thread_pool.lock().execute(move || handle_single_call(packet, handler, transport_send, count));
             }
             Err(RecvError::Termination) => break,
             Err(_err) => {
@@ -99,59 +120,10 @@ fn receiver<H>(
             }
         }
     }
-    // transport_recv is closed.
+    // transport_recv is terminated.
 
-    received_packets.close();
-    for joiner in joiners {
-        joiner.join().unwrap();
+    // TODO: handle too many loops
+    while count.load(Ordering::Acquire) != 0 {
+        thread::sleep(std::time::Duration::from_millis(1));
     }
-}
-
-fn create_handler_threads<H>(
-    config: Config,
-    handler: Arc<H>,
-    transport_send: Arc<dyn TransportSend>,
-    received_packets: Arc<Queue<Packet>>,
-) -> Vec<thread::JoinHandle<()>>
-where
-    H: Handler + 'static, {
-    let mut joins = Vec::new();
-
-    fn handler_loop<H: Handler>(
-        handler: Arc<H>,
-        transport_send: Arc<dyn TransportSend>,
-        received_packets: Arc<Queue<Packet>>,
-    ) {
-        loop {
-            let request = match received_packets.pop(None) {
-                Ok(packet) => packet,
-                Err(PopError::Timeout) => unreachable!(),
-                Err(PopError::QueueClosed) => break,
-            };
-
-            trace!("Packet received in Port Server {}", request);
-            let response = handler.handle(request.view());
-            trace!("Handler result in Port Server {:?}", response);
-            let mut response_packet = Packet::new_response_from_request(request.view());
-            response_packet.append_data(&response);
-            if let Err(_err) = transport_send.send(response_packet.buffer()) {
-                // TODO: report the error to the context
-                break
-            };
-        }
-    }
-
-    for i in 0..config.server_threads {
-        let packet_queue_ = Arc::clone(&received_packets);
-        let transport_send_ = Arc::clone(&transport_send);
-        let handler_ = Arc::clone(&handler);
-
-        let join_handle = thread::Builder::new()
-            .name(format!("[{}] port server send {}", config.name, i))
-            .spawn(move || handler_loop(handler_, transport_send_, packet_queue_))
-            .unwrap();
-        joins.push(join_handle);
-    }
-
-    joins
 }
