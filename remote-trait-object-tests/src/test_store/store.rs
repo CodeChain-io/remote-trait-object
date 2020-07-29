@@ -58,7 +58,7 @@ impl Store for MyPizzaStore {
     }
 
     fn order_pizza_credit_card(&self, menu: Pizza, credit_card: ServiceRef<dyn CreditCard>) -> String {
-        let mut credit_card: Box<dyn CreditCard> = credit_card.into_remote();
+        let mut credit_card: Box<dyn CreditCard> = credit_card.unwrap_import().into_remote();
         let (price, name) = self.order_pizza_common(menu);
         let result = credit_card.pay(price + self.vat);
         match result {
@@ -68,7 +68,7 @@ impl Store for MyPizzaStore {
     }
 
     fn register_card(&mut self, credit_card: ServiceRef<dyn CreditCard>) {
-        self.registered_card.replace(credit_card.into_remote());
+        self.registered_card.replace(credit_card.unwrap_import().into_remote());
     }
 }
 
@@ -80,7 +80,7 @@ pub fn run_store(transport: (IntraSend, IntraRecv)) {
         Config::default_setup(),
         transport_send,
         transport_recv,
-        ServiceRef::from_service(Box::new(MyPizzaStore {
+        ServiceToExport::new(Box::new(MyPizzaStore {
             vat: 1,
             registered_card: None,
         }) as Box<dyn Store>),

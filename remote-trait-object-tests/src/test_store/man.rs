@@ -45,7 +45,7 @@ fn test_runner(f: impl Fn(Box<dyn Store>)) {
     let store_runner =
         std::thread::Builder::new().name("Store Runner".to_owned()).spawn(move || run_store((send2, recv2))).unwrap();
 
-    let (rto_context, store): (Context, ServiceRef<dyn Store>) =
+    let (rto_context, store): (Context, ServiceToImport<dyn Store>) =
         Context::with_initial_service_import(Config::default_setup(), send1, recv1);
     let store: Box<dyn Store> = store.into_remote();
 
@@ -82,16 +82,16 @@ mod tests {
             }));
             let card_to_give = card.clone() as Arc<RwLock<dyn CreditCard>>;
             assert_eq!(
-                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::from_service(card_to_give.clone())),
+                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::create_export(card_to_give.clone())),
                 "Here's a delicious veggie pizza"
             );
             assert_eq!(
-                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::from_service(card_to_give.clone())),
+                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::create_export(card_to_give.clone())),
                 "Not enough balance"
             );
             card.write().balance += 10;
             assert_eq!(
-                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::from_service(card_to_give)),
+                store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::create_export(card_to_give)),
                 "Here's a delicious veggie pizza"
             );
         }
@@ -117,7 +117,7 @@ mod tests {
                 threads.push(std::thread::spawn(move || {
                     start.wait();
                     assert_eq!(
-                        store.order_pizza_credit_card(Pizza::Pineapple, ServiceRef::from_service(card_to_give)),
+                        store.order_pizza_credit_card(Pizza::Pineapple, ServiceRef::create_export(card_to_give)),
                         "Here's a delicious pineapple pizza"
                     );
                 }));
@@ -144,14 +144,14 @@ mod tests {
             .spawn(move || run_store((send2, recv2)))
             .unwrap();
 
-        let (rto_context, store): (Context, ServiceRef<dyn Store>) =
+        let (rto_context, store): (Context, ServiceToImport<dyn Store>) =
             Context::with_initial_service_import(Config::default_setup(), send1, recv1);
         let mut store: Box<dyn Store> = store.into_remote();
 
         let card = Box::new(MyCreditCard {
             balance: 0,
         }) as Box<dyn CreditCard>;
-        store.register_card(ServiceRef::from_service(card));
+        store.register_card(ServiceRef::create_export(card));
 
         rto_context.disable_garbage_collection();
         // This must not fail
@@ -173,7 +173,7 @@ mod tests {
             .spawn(move || run_store((send2, recv2)))
             .unwrap();
 
-        let (rto_context, store): (Context, ServiceRef<dyn Store>) =
+        let (rto_context, store): (Context, ServiceToImport<dyn Store>) =
             Context::with_initial_service_import(Config::default_setup(), send1, recv1);
         let store: Box<dyn WeirdSmallStore> = store.cast_service().unwrap().into_remote();
         assert_eq!(store.order_pizza(Pizza::Pepperoni, &&&&&&&&&&&&&&13), "Here's a delicious pepperoni pizza");
@@ -201,7 +201,7 @@ pub fn massive_with_export(n: usize) {
                 balance: 13,
             }) as Box<dyn CreditCard>;
             assert_eq!(
-                store.order_pizza_credit_card(Pizza::Pepperoni, ServiceRef::from_service(card)),
+                store.order_pizza_credit_card(Pizza::Pepperoni, ServiceRef::create_export(card)),
                 "Here's a delicious pepperoni pizza"
             );
         }

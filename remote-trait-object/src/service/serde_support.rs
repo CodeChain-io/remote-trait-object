@@ -30,60 +30,78 @@ enum ExportEntry {
     Exported(HandleToExchange),
 }
 
-enum ExportOrImport {
-    Export(RefCell<ExportEntry>),
-    Import(HandleToExchange, Weak<dyn Port>),
-}
-
-pub struct ServiceRef<T: ?Sized + Service> {
-    service: ExportOrImport,
+pub struct ServiceToExport<T: ?Sized + Service> {
+    service: RefCell<ExportEntry>,
     _marker: PhantomData<T>,
 }
 
-impl<T: ?Sized + Service> ServiceRef<T> {
-    pub fn from_service(service: impl IntoSkeleton<T>) -> Self {
+impl<T: ?Sized + Service> ServiceToExport<T> {
+    pub fn new(service: impl IntoSkeleton<T>) -> Self {
         Self {
-            service: ExportOrImport::Export(RefCell::new(ExportEntry::ReadyToExport(service.into_skeleton()))),
-            _marker: PhantomData,
-        }
-    }
-
-    pub fn into_remote<P: ImportRemote<T>>(self) -> P {
-        match self.service {
-            ExportOrImport::Import(handle, port) => P::import_remote(port, handle),
-            _ => panic!("You must call import() on an imported ServiceRef"),
-        }
-    }
-
-    pub fn cast_service<U: ?Sized + Service>(self) -> Result<ServiceRef<U>, ()> {
-        // TODO: Check the compatibility between traits using IDL
-        Ok(ServiceRef {
-            service: self.service,
-            _marker: PhantomData,
-        })
-    }
-
-    pub fn cast_service_without_compatibility_check<U: ?Sized + Service>(self) -> ServiceRef<U> {
-        ServiceRef {
-            service: self.service,
+            service: RefCell::new(ExportEntry::ReadyToExport(service.into_skeleton())),
             _marker: PhantomData,
         }
     }
 
     pub(crate) fn get_raw_export(self) -> Skeleton {
-        match self.service {
-            ExportOrImport::Export(x) => match x.into_inner() {
-                ExportEntry::ReadyToExport(s) => s,
-                _ => panic!(),
-            },
+        match self.service.into_inner() {
+            ExportEntry::ReadyToExport(s) => s,
             _ => panic!(),
+        }
+    }
+}
+
+pub struct ServiceToImport<T: ?Sized + Service> {
+    handle: HandleToExchange,
+    port: Weak<dyn Port>,
+    _marker: PhantomData<T>,
+}
+
+impl<T: ?Sized + Service> ServiceToImport<T> {
+    pub fn into_remote<P: ImportRemote<T>>(self) -> P {
+        P::import_remote(self.port, self.handle)
+    }
+
+    pub fn cast_service<U: ?Sized + Service>(self) -> Result<ServiceToImport<U>, ()> {
+        // TODO: Check the compatibility between traits using IDL
+        Ok(ServiceToImport {
+            handle: self.handle,
+            port: self.port,
+            _marker: PhantomData,
+        })
+    }
+
+    pub fn cast_service_without_compatibility_check<U: ?Sized + Service>(self) -> ServiceToImport<U> {
+        ServiceToImport {
+            handle: self.handle,
+            port: self.port,
+            _marker: PhantomData,
         }
     }
 
     pub(crate) fn from_raw_import(handle: HandleToExchange, port: Weak<dyn Port>) -> Self {
         Self {
-            service: ExportOrImport::Import(handle, port),
+            handle,
+            port,
             _marker: PhantomData,
+        }
+    }
+}
+
+pub enum ServiceRef<T: ?Sized + Service> {
+    Export(ServiceToExport<T>),
+    Import(ServiceToImport<T>),
+}
+
+impl<T: ?Sized + Service> ServiceRef<T> {
+    pub fn create_export(service: impl IntoSkeleton<T>) -> Self {
+        ServiceRef::Export(ServiceToExport::new(service))
+    }
+
+    pub fn unwrap_import(self) -> ServiceToImport<T> {
+        match self {
+            ServiceRef::Import(x) => x,
+            _ => panic!("You can import ony imported ServiceRef"),
         }
     }
 }
@@ -122,31 +140,47 @@ pub(crate) mod port_thread_local {
     }
 }
 
-impl<T: ?Sized + Service> Serialize for ServiceRef<T> {
+impl<T: ?Sized + Service> Serialize for ServiceToExport<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer, {
         let error = "You must not de/serialize ServiceRef by yourself. If you not, this is a bug.";
-        if let ExportOrImport::Export(export_entry) = &self.service {
-            let (handle, have_to_replace) = match &*export_entry.borrow() {
-                ExportEntry::ReadyToExport(service) => {
-                    debug_assert_eq!(Arc::strong_count(&service.raw), 1);
-                    (
-                        port_thread_local::get_port()
-                            .upgrade()
-                            .expect(error)
-                            .register_service(Arc::clone(&service.raw)),
-                        true,
-                    )
-                }
-                ExportEntry::Exported(handle) => (*handle, false),
-            };
-            if have_to_replace {
-                *export_entry.borrow_mut() = ExportEntry::Exported(handle)
+        let (handle, have_to_replace) = match &*self.service.borrow() {
+            ExportEntry::ReadyToExport(service) => {
+                debug_assert_eq!(Arc::strong_count(&service.raw), 1);
+                (port_thread_local::get_port().upgrade().expect(error).register_service(Arc::clone(&service.raw)), true)
             }
-            handle.serialize(serializer)
-        } else {
-            panic!(error)
+            ExportEntry::Exported(handle) => (*handle, false),
+        };
+        if have_to_replace {
+            *self.service.borrow_mut() = ExportEntry::Exported(handle)
+        }
+        handle.serialize(serializer)
+    }
+}
+
+impl<'de, T: ?Sized + Service> Deserialize<'de> for ServiceToImport<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>, {
+        let handle = HandleToExchange::deserialize(deserializer)?;
+        Ok(ServiceToImport {
+            handle,
+            port: port_thread_local::get_port(),
+            _marker: std::marker::PhantomData,
+        })
+    }
+}
+
+impl<T: ?Sized + Service> Serialize for ServiceRef<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer, {
+        match self {
+            ServiceRef::Export(x) => x.serialize(serializer),
+            ServiceRef::Import(_) => panic!(
+                "If you want to re-export an imported object, first completely import it with `into_remote()` and make it into `ServiceToExport`."
+            ),
         }
     }
 }
@@ -155,11 +189,7 @@ impl<'de, T: ?Sized + Service> Deserialize<'de> for ServiceRef<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>, {
-        let handle = HandleToExchange::deserialize(deserializer)?;
-        Ok(ServiceRef {
-            service: ExportOrImport::Import(handle, port_thread_local::get_port()),
-            _marker: std::marker::PhantomData,
-        })
+        Ok(ServiceRef::Import(ServiceToImport::deserialize(deserializer)?))
     }
 }
 
@@ -223,7 +253,7 @@ mod tests {
 
             {
                 let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl);
-                let foo_sarc = ServiceRef::from_service(foo_arc.clone());
+                let foo_sarc = ServiceRef::create_export(foo_arc.clone());
                 let bytes = serde_json::to_vec(&foo_sarc).unwrap();
                 let handle_to_exchange: HandleToExchange = serde_json::from_slice(&bytes).unwrap();
                 assert_eq!(handle_to_exchange.0, 123);
@@ -232,7 +262,7 @@ mod tests {
 
             {
                 let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl);
-                let foo_sarc = ServiceRef::from_service(foo_arc.clone());
+                let foo_sarc = ServiceRef::create_export(foo_arc.clone());
                 let bytes = serde_cbor::to_vec(&foo_sarc).unwrap();
                 let handle_to_exchange: HandleToExchange = serde_cbor::from_slice(&bytes).unwrap();
                 assert_eq!(handle_to_exchange.0, 123);
@@ -241,7 +271,7 @@ mod tests {
 
             {
                 let foo_arc: Arc<dyn Foo> = Arc::new(FooImpl);
-                let foo_sarc = ServiceRef::from_service(foo_arc.clone());
+                let foo_sarc = ServiceRef::create_export(foo_arc.clone());
                 let bytes = bincode::serialize(&foo_sarc).unwrap();
                 let handle_to_exchange: HandleToExchange = bincode::deserialize(&bytes).unwrap();
                 assert_eq!(handle_to_exchange.0, 123);
@@ -284,14 +314,14 @@ mod tests {
                 let handle_to_exchange = HandleToExchange(32);
                 let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
                 let dyn_foo: ServiceRef<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
-                assert_eq!(dyn_foo.into_remote::<Box<dyn Foo>>().get_handle_to_exchange().0, 32);
+                assert_eq!(dyn_foo.unwrap_import().into_remote::<Box<dyn Foo>>().get_handle_to_exchange().0, 32);
             }
 
             {
                 let handle_to_exchange = HandleToExchange(2);
                 let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
                 let dyn_foo: ServiceRef<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
-                assert_eq!(dyn_foo.into_remote::<Box<dyn Foo>>().get_handle_to_exchange().0, 2);
+                assert_eq!(dyn_foo.unwrap_import().into_remote::<Box<dyn Foo>>().get_handle_to_exchange().0, 2);
             }
         }
     }
