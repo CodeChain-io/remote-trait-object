@@ -76,7 +76,7 @@ impl Service for MyPizzaStore {}
 
 pub fn run_store(transport: (IntraSend, IntraRecv)) {
     let (transport_send, transport_recv) = transport;
-    let (rto_context, _null): (Context, ServiceRef<dyn NullService>) = Context::with_initial_service(
+    let rto_context = Context::with_initial_service_export(
         Config::default_setup(),
         transport_send,
         transport_recv,
