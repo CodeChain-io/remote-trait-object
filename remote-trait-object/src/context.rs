@@ -98,36 +98,42 @@ impl Context {
         transport_send: S,
         transport_recv: R,
     ) -> Self {
-        let firm_close_barrier = Arc::new(Barrier::new(2));
-
-        let MultiplexResult {
-            multiplexer,
-            request_recv,
-            response_recv,
-        } = Multiplexer::multiplex::<R, PacketForward>(config.clone(), transport_recv);
-        let transport_send = Arc::new(transport_send) as Arc<dyn TransportSend>;
-
-        let client = Client::new(config.clone(), Arc::clone(&transport_send), Box::new(response_recv));
-        let port = BasicPort::new(
-            client,
-            (Box::new(MetaServiceImpl::new(Arc::clone(&firm_close_barrier))) as Box<dyn MetaService>).into_skeleton(),
-        );
-        let server = Server::new(config.clone(), port.get_registry(), transport_send, Box::new(request_recv));
-
-        let port_weak = Arc::downgrade(&port);
-        let meta_service = <Box<dyn MetaService> as ImportRemote<dyn MetaService>>::import_remote(
-            port_weak,
-            crate::service::HandleToExchange(crate::forwarder::META_SERVICE_OBJECT_ID),
-        );
-
-        Context {
+        let null_to_export = crate::service::create_null_service();
+        let (ctx, null_to_import): (Self, ServiceRef<dyn crate::service::NullService>) = Self::with_initial_service(
             config,
-            multiplexer: Some(multiplexer),
-            server: Some(server),
-            port: Some(port),
-            meta_service: Some(meta_service),
-            firm_close_barrier,
-        }
+            transport_send,
+            transport_recv,
+            ServiceRef::from_service(null_to_export),
+        );
+        let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_remote();
+        ctx
+    }
+
+    pub fn with_initial_service_export<S: TransportSend + 'static, R: TransportRecv + 'static, A: ?Sized + Service>(
+        config: Config,
+        transport_send: S,
+        transport_recv: R,
+        initial_service: ServiceRef<A>,
+    ) -> Self {
+        let (ctx, null_to_import): (Self, ServiceRef<dyn crate::service::NullService>) =
+            Self::with_initial_service(config, transport_send, transport_recv, initial_service);
+        let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_remote();
+        ctx
+    }
+
+    pub fn with_initial_service_import<S: TransportSend + 'static, R: TransportRecv + 'static, B: ?Sized + Service>(
+        config: Config,
+        transport_send: S,
+        transport_recv: R,
+    ) -> (Self, ServiceRef<B>) {
+        let null_to_export = crate::service::create_null_service();
+        let (ctx, import): (Self, ServiceRef<B>) = Self::with_initial_service(
+            config,
+            transport_send,
+            transport_recv,
+            ServiceRef::from_service(null_to_export),
+        );
+        (ctx, import)
     }
 
     pub fn with_initial_service<
@@ -151,7 +157,7 @@ impl Context {
         let transport_send = Arc::new(transport_send) as Arc<dyn TransportSend>;
 
         let client = Client::new(config.clone(), Arc::clone(&transport_send), Box::new(response_recv));
-        let port = BasicPort::with_initial_service(
+        let port = BasicPort::new(
             client,
             (Box::new(MetaServiceImpl::new(Arc::clone(&firm_close_barrier))) as Box<dyn MetaService>).into_skeleton(),
             initial_service.get_raw_export(),
