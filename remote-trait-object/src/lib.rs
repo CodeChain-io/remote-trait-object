@@ -29,7 +29,7 @@ pub mod transport;
 
 pub use context::{Config, Context};
 pub use service::id::setup_identifiers;
-pub use service::serde_support::ServiceRef;
+pub use service::serde_support::{ServiceRef, ServiceToExport, ServiceToImport};
 pub use service::{SerdeFormat, Service};
 
 pub mod raw_exchange {

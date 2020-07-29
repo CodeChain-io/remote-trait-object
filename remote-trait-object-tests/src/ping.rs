@@ -31,7 +31,7 @@ impl Service for SimpleHello {}
 
 impl Hello for SimpleHello {
     fn hey(&self) -> ServiceRef<dyn Ping> {
-        ServiceRef::from_service(Box::new(SimplePing {
+        ServiceRef::create_export(Box::new(SimplePing {
             barrier: Arc::clone(&self.barrier),
         }) as Box<dyn Ping>)
     }
@@ -61,7 +61,7 @@ impl Ping for SimplePing {
 }
 
 #[allow(clippy::type_complexity)]
-fn run(barrier: Arc<Barrier>) -> ((Context, ServiceRef<dyn Hello>), (Context, ServiceRef<dyn Hello>)) {
+fn run(barrier: Arc<Barrier>) -> ((Context, ServiceToImport<dyn Hello>), (Context, ServiceToImport<dyn Hello>)) {
     let crate::transport::TransportEnds {
         recv1,
         send1,
@@ -73,7 +73,7 @@ fn run(barrier: Arc<Barrier>) -> ((Context, ServiceRef<dyn Hello>), (Context, Se
             Config::default_setup(),
             send1,
             recv1,
-            ServiceRef::from_service(Box::new(SimpleHello {
+            ServiceToExport::new(Box::new(SimpleHello {
                 barrier: Arc::clone(&barrier),
             }) as Box<dyn Hello>),
         ),
@@ -81,7 +81,7 @@ fn run(barrier: Arc<Barrier>) -> ((Context, ServiceRef<dyn Hello>), (Context, Se
             Config::default_setup(),
             send2,
             recv2,
-            ServiceRef::from_service(Box::new(SimpleHello {
+            ServiceToExport::new(Box::new(SimpleHello {
                 barrier,
             }) as Box<dyn Hello>),
         ),
@@ -95,8 +95,8 @@ fn ping1() {
     let hello1: Box<dyn Hello> = hello1.into_remote();
     let hello2: Box<dyn Hello> = hello2.into_remote();
 
-    let ping1: Box<dyn Ping> = hello1.hey().into_remote();
-    let ping2: Box<dyn Ping> = hello2.hey().into_remote();
+    let ping1: Box<dyn Ping> = hello1.hey().unwrap_import().into_remote();
+    let ping2: Box<dyn Ping> = hello2.hey().unwrap_import().into_remote();
 
     ping1.ping();
     ping2.ping();
@@ -114,7 +114,7 @@ fn ping_concurrent1() {
         let hello1: Box<dyn Hello> = hello1.into_remote();
         let hello2: Box<dyn Hello> = hello2.into_remote();
 
-        let pings: Vec<Box<dyn Ping>> = (0..n).map(|_| hello2.hey().into_remote()).collect();
+        let pings: Vec<Box<dyn Ping>> = (0..n).map(|_| hello2.hey().unwrap_import().into_remote()).collect();
         let joins: Vec<thread::JoinHandle<()>> = pings
             .into_iter()
             .map(|ping| {
@@ -142,7 +142,7 @@ fn ping_concurrent2() {
         let hello1: Box<dyn Hello> = hello1.into_remote();
         let hello2: Box<dyn Hello> = hello2.into_remote();
 
-        let ping: Arc<dyn Ping> = hello2.hey().into_remote();
+        let ping: Arc<dyn Ping> = hello2.hey().unwrap_import().into_remote();
 
         let joins: Vec<thread::JoinHandle<()>> = (0..n)
             .map(|_| {

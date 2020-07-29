@@ -18,7 +18,7 @@ use crate::packet::{PacketView, SlotType};
 use crate::port::{client::Client, server::Server, BasicPort, Port};
 use crate::transport::multiplex::{self, ForwardResult, MultiplexResult, Multiplexer};
 use crate::transport::{TransportRecv, TransportSend};
-use crate::{raw_exchange::*, Service, ServiceRef};
+use crate::{raw_exchange::*, Service, ServiceToExport, ServiceToImport};
 use parking_lot::Mutex;
 use std::sync::{Arc, Barrier, Weak};
 use threadpool::ThreadPool;
@@ -99,12 +99,8 @@ impl Context {
         transport_recv: R,
     ) -> Self {
         let null_to_export = crate::service::create_null_service();
-        let (ctx, null_to_import): (Self, ServiceRef<dyn crate::service::NullService>) = Self::with_initial_service(
-            config,
-            transport_send,
-            transport_recv,
-            ServiceRef::from_service(null_to_export),
-        );
+        let (ctx, null_to_import): (Self, ServiceToImport<dyn crate::service::NullService>) =
+            Self::with_initial_service(config, transport_send, transport_recv, ServiceToExport::new(null_to_export));
         let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_remote();
         ctx
     }
@@ -113,9 +109,9 @@ impl Context {
         config: Config,
         transport_send: S,
         transport_recv: R,
-        initial_service: ServiceRef<A>,
+        initial_service: ServiceToExport<A>,
     ) -> Self {
-        let (ctx, null_to_import): (Self, ServiceRef<dyn crate::service::NullService>) =
+        let (ctx, null_to_import): (Self, ServiceToImport<dyn crate::service::NullService>) =
             Self::with_initial_service(config, transport_send, transport_recv, initial_service);
         let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_remote();
         ctx
@@ -125,14 +121,10 @@ impl Context {
         config: Config,
         transport_send: S,
         transport_recv: R,
-    ) -> (Self, ServiceRef<B>) {
+    ) -> (Self, ServiceToImport<B>) {
         let null_to_export = crate::service::create_null_service();
-        let (ctx, import): (Self, ServiceRef<B>) = Self::with_initial_service(
-            config,
-            transport_send,
-            transport_recv,
-            ServiceRef::from_service(null_to_export),
-        );
+        let (ctx, import) =
+            Self::with_initial_service(config, transport_send, transport_recv, ServiceToExport::new(null_to_export));
         (ctx, import)
     }
 
@@ -145,8 +137,8 @@ impl Context {
         config: Config,
         transport_send: S,
         transport_recv: R,
-        initial_service: ServiceRef<A>,
-    ) -> (Self, ServiceRef<B>) {
+        initial_service: ServiceToExport<A>,
+    ) -> (Self, ServiceToImport<B>) {
         let firm_close_barrier = Arc::new(Barrier::new(2));
 
         let MultiplexResult {
@@ -179,7 +171,7 @@ impl Context {
             meta_service: Some(meta_service),
             firm_close_barrier,
         };
-        let initial_service = ServiceRef::from_raw_import(initial_handle, port_weak);
+        let initial_service = ServiceToImport::from_raw_import(initial_handle, port_weak);
         (ctx, initial_service)
     }
 
