@@ -41,24 +41,7 @@ impl fmt::Debug for ServiceForwarder {
 }
 
 impl ServiceForwarder {
-    pub fn new(meta_service: Skeleton) -> Self {
-        let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> = Default::default();
-        service_objects.write().insert(META_SERVICE_OBJECT_ID, meta_service.raw);
-        let mut available_ids = VecDeque::new();
-        for i in 0u32..100 {
-            if i != META_SERVICE_OBJECT_ID {
-                available_ids.push_back(i);
-            }
-        }
-
-        Self {
-            service_objects: Default::default(),
-            available_ids: RwLock::new((0u32..100).collect()),
-            port: RwLock::new(null_weak_port()),
-        }
-    }
-
-    pub fn with_initial_service(meta_service: Skeleton, service_object: Skeleton) -> Self {
+    pub fn new(meta_service: Skeleton, service_object: Skeleton) -> Self {
         let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> = Default::default();
         service_objects.write().insert(META_SERVICE_OBJECT_ID, meta_service.raw);
         service_objects.write().insert(INITIAL_SERVICE_OBJECT_ID, service_object.raw);
