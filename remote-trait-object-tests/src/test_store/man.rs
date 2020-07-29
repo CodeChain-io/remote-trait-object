@@ -45,12 +45,8 @@ fn test_runner(f: impl Fn(Box<dyn Store>)) {
     let store_runner =
         std::thread::Builder::new().name("Store Runner".to_owned()).spawn(move || run_store((send2, recv2))).unwrap();
 
-    let (rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
-        Config::default_setup(),
-        send1,
-        recv1,
-        ServiceRef::from_service(create_null_service()),
-    );
+    let (rto_context, store): (Context, ServiceRef<dyn Store>) =
+        Context::with_initial_service_import(Config::default_setup(), send1, recv1);
     let store: Box<dyn Store> = store.into_remote();
 
     f(store);
@@ -148,12 +144,8 @@ mod tests {
             .spawn(move || run_store((send2, recv2)))
             .unwrap();
 
-        let (rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
-            Config::default_setup(),
-            send1,
-            recv1,
-            ServiceRef::from_service(create_null_service()),
-        );
+        let (rto_context, store): (Context, ServiceRef<dyn Store>) =
+            Context::with_initial_service_import(Config::default_setup(), send1, recv1);
         let mut store: Box<dyn Store> = store.into_remote();
 
         let card = Box::new(MyCreditCard {
@@ -181,12 +173,8 @@ mod tests {
             .spawn(move || run_store((send2, recv2)))
             .unwrap();
 
-        let (rto_context, store): (Context, ServiceRef<dyn Store>) = Context::with_initial_service(
-            Config::default_setup(),
-            send1,
-            recv1,
-            ServiceRef::from_service(create_null_service()),
-        );
+        let (rto_context, store): (Context, ServiceRef<dyn Store>) =
+            Context::with_initial_service_import(Config::default_setup(), send1, recv1);
         let store: Box<dyn WeirdSmallStore> = store.cast_service().unwrap().into_remote();
         assert_eq!(store.order_pizza(Pizza::Pepperoni, &&&&&&&&&&&&&&13), "Here's a delicious pepperoni pizza");
 

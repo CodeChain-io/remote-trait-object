@@ -30,7 +30,7 @@ pub mod transport;
 pub use context::{Config, Context};
 pub use service::id::setup_identifiers;
 pub use service::serde_support::ServiceRef;
-pub use service::{create_null_service, NullService, SerdeFormat, Service};
+pub use service::{SerdeFormat, Service};
 
 pub mod raw_exchange {
     //! This module is needed only you want to perform some raw exchange (or export/import) of services.
