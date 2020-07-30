@@ -22,6 +22,12 @@ pub struct Skeleton {
     pub(crate) raw: Arc<dyn Dispatch>,
 }
 
+impl Skeleton {
+    pub fn new<T: ?Sized + Service>(service: impl IntoSkeleton<T>) -> Self {
+        service.into_skeleton()
+    }
+}
+
 // This belongs to macro_env
 pub fn create_skeleton(raw: Arc<dyn Dispatch>) -> Skeleton {
     Skeleton {
@@ -49,11 +55,8 @@ pub trait ImportRemote<T: ?Sized + Service>: Sized {
 
 // These functions are utilities for the generic traits above
 
-pub fn export_service_into_handle<T: ?Sized + Service>(
-    context: &crate::context::Context,
-    service: impl IntoSkeleton<T>,
-) -> HandleToExchange {
-    context.get_port().upgrade().unwrap().register_service(service.into_skeleton().raw)
+pub fn export_service_into_handle(context: &crate::context::Context, service: Skeleton) -> HandleToExchange {
+    context.get_port().upgrade().unwrap().register_service(service.raw)
 }
 
 pub fn import_service_from_handle<T: ?Sized + Service, P: ImportRemote<T>>(
