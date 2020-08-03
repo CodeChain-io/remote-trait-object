@@ -16,7 +16,7 @@
 
 use crate::packet::{Packet, PacketView, SlotId};
 use crate::queue::Queue;
-use crate::transport::{RecvError, TransportRecv, TransportSend};
+use crate::transport::{TransportError, TransportRecv, TransportSend};
 use crate::Config;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{bounded, Receiver, Sender};
@@ -28,7 +28,7 @@ use std::time;
 #[derive(Debug)]
 struct CallSlot {
     id: SlotId,
-    response: Receiver<Result<Packet, RecvError>>,
+    response: Receiver<Result<Packet, TransportError>>,
 }
 
 #[derive(Debug)]
@@ -87,7 +87,7 @@ impl Client {
         };
 
         // TODO: handle the error
-        self.transport_send.send(packet.buffer()).unwrap();
+        self.transport_send.send(packet.buffer(), None).unwrap();
         let response_packet = slot.response.recv().expect(
             "counterparty send is managed by client. \n\
         This error might be due to drop after disconnection of the two remote-trait-object contexts. \n\
@@ -122,7 +122,10 @@ impl Drop for Client {
     }
 }
 
-fn receive_loop(transport_recv: Box<dyn TransportRecv>, to_slot_receivers: Vec<Sender<Result<Packet, RecvError>>>) {
+fn receive_loop(
+    transport_recv: Box<dyn TransportRecv>,
+    to_slot_receivers: Vec<Sender<Result<Packet, TransportError>>>,
+) {
     loop {
         match transport_recv.recv(None) {
             Ok(x) => {
@@ -132,7 +135,7 @@ fn receive_loop(transport_recv: Box<dyn TransportRecv>, to_slot_receivers: Vec<S
                     .send(Ok(packet))
                     .expect("Slot receivers are managed in Client. Client must be dropped after this thread");
             }
-            Err(RecvError::Termination) => return,
+            Err(TransportError::Termination) => return,
             Err(_err) => {
                 // TODO: Broadcast the error to all **active** call slots
                 return

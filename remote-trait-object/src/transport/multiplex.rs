@@ -15,18 +15,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::packet::PacketView;
-use crate::transport::{RecvError, Terminate, TransportRecv};
+use crate::transport::{Terminate, TransportError, TransportRecv};
 use crate::Config;
 use crossbeam::channel::{self, Receiver, Sender};
 use parking_lot::Mutex;
 use std::thread;
 
 pub struct MultiplexedRecv {
-    recv: Receiver<Result<Vec<u8>, RecvError>>,
+    recv: Receiver<Result<Vec<u8>, TransportError>>,
 }
 
 impl TransportRecv for MultiplexedRecv {
-    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, RecvError> {
+    fn recv(&self, timeout: Option<std::time::Duration>) -> Result<Vec<u8>, TransportError> {
         if let Some(timeout) = timeout {
             self.recv.recv_timeout(timeout).unwrap()
         } else {
@@ -101,8 +101,8 @@ impl Multiplexer {
 
 fn receiver_loop<Forwarder: Forward, Receiver: TransportRecv>(
     transport_recv: Receiver,
-    request_send: Sender<Result<Vec<u8>, RecvError>>,
-    response_send: Sender<Result<Vec<u8>, RecvError>>,
+    request_send: Sender<Result<Vec<u8>, TransportError>>,
+    response_send: Sender<Result<Vec<u8>, TransportError>>,
 ) {
     loop {
         let message = match transport_recv.recv(None) {
