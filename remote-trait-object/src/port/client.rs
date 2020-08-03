@@ -78,7 +78,8 @@ impl Client {
     }
 
     pub fn call(&self, packet: PacketView) -> Packet {
-        let slot = self.call_slots.pop(Some(self.config.call_timeout)).expect("Too many calls on port");
+        // TODO: handle the error
+        let slot = self.call_slots.pop(self.config.call_timeout).expect("Too many calls on port");
 
         let packet = {
             let mut packet = packet.to_owned();
@@ -87,7 +88,7 @@ impl Client {
         };
 
         // TODO: handle the error
-        self.transport_send.send(packet.buffer(), None).unwrap();
+        self.transport_send.send(packet.buffer(), self.config.call_timeout).unwrap();
         let response_packet = slot.response.recv().expect(
             "counterparty send is managed by client. \n\
         This error might be due to drop after disconnection of the two remote-trait-object contexts. \n\
