@@ -16,7 +16,7 @@
 
 use super::types::Handler;
 use crate::packet::Packet;
-use crate::transport::{RecvError, TransportRecv, TransportSend};
+use crate::transport::{TransportError, TransportRecv, TransportSend};
 use crate::Config;
 use crossbeam::channel::RecvTimeoutError::{Disconnected, Timeout};
 use crossbeam::channel::{self, Receiver};
@@ -86,7 +86,7 @@ fn handle_single_call<H: Handler>(
     let response = handler.handle(packet.view());
     let mut response_packet = Packet::new_response_from_request(packet.view());
     response_packet.append_data(&response);
-    if let Err(_err) = transport_send.send(response_packet.buffer()) {
+    if let Err(_err) = transport_send.send(response_packet.buffer(), None) {
         // TODO: report the error to the context
         count.fetch_sub(1, Ordering::Release);
         return
@@ -113,7 +113,7 @@ fn receiver<H>(
                 let count = Arc::clone(&count);
                 config.thread_pool.lock().execute(move || handle_single_call(packet, handler, transport_send, count));
             }
-            Err(RecvError::Termination) => break,
+            Err(TransportError::Termination) => break,
             Err(_err) => {
                 // TODO: report this error to the context
                 break
