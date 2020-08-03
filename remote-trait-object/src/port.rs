@@ -24,6 +24,7 @@ use crate::forwarder::{ServiceObjectId, DELETE_REQUEST};
 use crate::packet::{Packet, PacketView};
 use crate::raw_exchange::Skeleton;
 use crate::service::*;
+use crate::Config;
 use client::Client;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -72,9 +73,9 @@ impl Port for BasicPort {
 }
 
 impl BasicPort {
-    pub fn new(client: Client, meta_sevice: Skeleton, initial_service: Skeleton) -> Arc<Self> {
+    pub fn new(config: Config, client: Client, meta_sevice: Skeleton, initial_service: Skeleton) -> Arc<Self> {
         let arc = Arc::new(Self {
-            registry: Arc::new(ServiceForwarder::new(meta_sevice, initial_service)),
+            registry: Arc::new(ServiceForwarder::new(config, meta_sevice, initial_service)),
             client: Some(client),
             no_drop: AtomicBool::new(false),
         });

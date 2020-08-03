@@ -55,13 +55,38 @@ mod meta_service {
 }
 use meta_service::{MetaService, MetaServiceImpl};
 
+/// A configuration of a `remote-trait-object` context.
 #[derive(Clone, Debug)]
 pub struct Config {
-    /// This will be appended to the names of various threads spawned by RTO, for an easy debug.
+    /// A name that will be appended to the names of various threads spawned by `remote-trait-object`, for an easy debug.
+    ///
+    /// This can be helpful if you handle multiple contexts of `remote-trait-object`.
     pub name: String,
-    pub call_slots: usize,
-    pub call_timeout: std::time::Duration,
 
+    /// Number of the maximum of concurrent calls.
+    ///
+    /// Value of this doesn't have anything to do with the number of threads that would be spawned.
+    /// Having a large number of this wouldn't charge any cost except really small additional memory allocation.
+    ///
+    /// [`server_threads`]: ./struct.Config.html#field.server_threads
+    pub call_slots: usize,
+
+    /// A timeout for a remote method call.
+    ///
+    /// All remote method invocations through your remote object and delete requests (that happens when you drop a remote object)
+    /// will have this timeout. If it exceeds, it will cause an error.
+    ///
+    /// Use `None` for to wait indefinitely.
+    pub call_timeout: Option<std::time::Duration>,
+
+    /// A maximum number of services that this context can export.
+    pub maximum_services_num: usize,
+
+    /// A shared instance of a thread pool that will be used in call handling
+    ///
+    /// A `remote-trait-object` context will use this thread pool to handle an incoming method call.
+    /// Size of this pool determines the maximum number of concurrent calls that the context can handle.
+    /// Note that this pool is wrapped in `Arc`, which means that it can be possibly shared with other places.
     pub thread_pool: Arc<Mutex<threadpool::ThreadPool>>,
 }
 
@@ -70,7 +95,8 @@ impl Config {
         Self {
             name: "my rto".to_owned(),
             call_slots: 512,
-            call_timeout: std::time::Duration::from_millis(1000),
+            maximum_services_num: 65536,
+            call_timeout: Some(std::time::Duration::from_millis(1000)),
 
             thread_pool: Arc::new(Mutex::new(ThreadPool::new(8))),
         }
@@ -150,6 +176,7 @@ impl Context {
 
         let client = Client::new(config.clone(), Arc::clone(&transport_send), Box::new(response_recv));
         let port = BasicPort::new(
+            config.clone(),
             client,
             (Box::new(MetaServiceImpl::new(Arc::clone(&firm_close_barrier))) as Box<dyn MetaService>).into_skeleton(),
             initial_service.get_raw_export(),

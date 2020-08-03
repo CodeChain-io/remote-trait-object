@@ -18,6 +18,7 @@ use crate::packet::PacketView;
 use crate::port::{null_weak_port, Handler, Port};
 use crate::raw_exchange::Skeleton;
 use crate::service::Dispatch;
+use crate::Config;
 use parking_lot::RwLock;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
@@ -41,12 +42,12 @@ impl fmt::Debug for ServiceForwarder {
 }
 
 impl ServiceForwarder {
-    pub fn new(meta_service: Skeleton, service_object: Skeleton) -> Self {
+    pub fn new(config: Config, meta_service: Skeleton, service_object: Skeleton) -> Self {
         let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> = Default::default();
         service_objects.write().insert(META_SERVICE_OBJECT_ID, meta_service.raw);
         service_objects.write().insert(INITIAL_SERVICE_OBJECT_ID, service_object.raw);
         let mut available_ids = VecDeque::new();
-        for i in 0u32..100 {
+        for i in 0u32..(config.maximum_services_num as u32) {
             if i != META_SERVICE_OBJECT_ID && i != INITIAL_SERVICE_OBJECT_ID {
                 available_ids.push_back(i);
             }
