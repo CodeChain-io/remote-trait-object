@@ -20,15 +20,15 @@ use crate::helper::path_of_single_ident;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::ToTokens;
 
-pub(super) fn generate_remote(source_trait: &syn::ItemTrait, args: &MacroArgs) -> Result<TokenStream2, TokenStream2> {
-    if args.no_stub {
+pub(super) fn generate_proxy(source_trait: &syn::ItemTrait, args: &MacroArgs) -> Result<TokenStream2, TokenStream2> {
+    if args.no_proxy {
         return Ok(TokenStream2::new())
     }
 
     let env_path = create_env_path();
 
     let trait_ident = source_trait.ident.clone();
-    let struct_ident = quote::format_ident!("{}Remote", trait_ident);
+    let struct_ident = quote::format_ident!("{}Proxy", trait_ident);
     let mut imported_struct = quote! {
         #[derive(Debug)]
         #[doc(hidden)]
@@ -91,22 +91,22 @@ pub(super) fn generate_remote(source_trait: &syn::ItemTrait, args: &MacroArgs) -
     imported_struct.extend(quote! {
         impl #env_path::Service for #struct_ident {
         }
-        impl #env_path::ImportRemote<dyn #trait_ident> for Box<dyn #trait_ident> {
-            fn import_remote(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> Self {
+        impl #env_path::ImportProxy<dyn #trait_ident> for Box<dyn #trait_ident> {
+            fn import_proxy(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> Self {
                 Box::new(#struct_ident {
                     handle: #env_path::Handle::new(handle, port),
                 })
             }
         }
-        impl #env_path::ImportRemote<dyn #trait_ident> for std::sync::Arc<dyn #trait_ident> {
-            fn import_remote(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> Self {
+        impl #env_path::ImportProxy<dyn #trait_ident> for std::sync::Arc<dyn #trait_ident> {
+            fn import_proxy(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> Self {
                 std::sync::Arc::new(#struct_ident {
                     handle: #env_path::Handle::new(handle, port),
                 })
             }
         }
-        impl #env_path::ImportRemote<dyn #trait_ident> for std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>> {
-            fn import_remote(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> Self {
+        impl #env_path::ImportProxy<dyn #trait_ident> for std::sync::Arc<parking_lot::RwLock<dyn #trait_ident>> {
+            fn import_proxy(port: std::sync::Weak<dyn #env_path::Port>, handle: #env_path::HandleToExchange) -> Self {
                 std::sync::Arc::new(parking_lot::RwLock::new(#struct_ident {
                     handle: #env_path::Handle::new(handle, port),
                 }))

@@ -101,7 +101,7 @@ impl Context {
         let null_to_export = crate::service::create_null_service();
         let (ctx, null_to_import): (Self, ServiceToImport<dyn crate::service::NullService>) =
             Self::with_initial_service(config, transport_send, transport_recv, ServiceToExport::new(null_to_export));
-        let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_remote();
+        let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_proxy();
         ctx
     }
 
@@ -113,7 +113,7 @@ impl Context {
     ) -> Self {
         let (ctx, null_to_import): (Self, ServiceToImport<dyn crate::service::NullService>) =
             Self::with_initial_service(config, transport_send, transport_recv, initial_service);
-        let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_remote();
+        let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_proxy();
         ctx
     }
 
@@ -157,7 +157,7 @@ impl Context {
         let server = Server::new(config.clone(), port.get_registry(), transport_send, Box::new(request_recv));
 
         let port_weak = Arc::downgrade(&port) as Weak<dyn Port>;
-        let meta_service = <Box<dyn MetaService> as ImportRemote<dyn MetaService>>::import_remote(
+        let meta_service = <Box<dyn MetaService> as ImportProxy<dyn MetaService>>::import_proxy(
             Weak::clone(&port_weak),
             crate::service::HandleToExchange(crate::forwarder::META_SERVICE_OBJECT_ID),
         );
@@ -207,7 +207,7 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        // We have to clean all registered service, as some might hold another remote service inside, which refers this context's port.
+        // We have to clean all registered service, as some might hold another proxy object inside, which refers this context's port.
         // For such case, we have to make them be dropped first before we unwrap the Arc<BasicPort>
         self.port.as_ref().unwrap().set_no_drop();
         self.port.as_ref().unwrap().clear_registry();

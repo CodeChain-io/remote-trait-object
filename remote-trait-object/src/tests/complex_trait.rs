@@ -56,7 +56,7 @@ impl SimpleA {
 
 impl A for SimpleA {
     fn service_object_as_argument(&self, b: ServiceRef<dyn B>) {
-        let b: Box<dyn B> = b.unwrap_import().into_remote();
+        let b: Box<dyn B> = b.unwrap_import().into_proxy();
         assert_eq!(0, b.get());
         b.inc();
         b.inc();
@@ -107,10 +107,10 @@ fn init_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
 
-fn create_remote_a(port: Arc<dyn Port>) -> Arc<dyn A> {
+fn create_proxy_a(port: Arc<dyn Port>) -> Arc<dyn A> {
     let a: Arc<dyn A> = Arc::new(SimpleA::new());
     let handle = port.register_service(a.into_skeleton().raw);
-    ImportRemote::import_remote(Arc::downgrade(&port), handle)
+    ImportProxy::import_proxy(Arc::downgrade(&port), handle)
 }
 
 #[test]
@@ -118,17 +118,17 @@ fn service_object_as_return() {
     init_logger();
 
     let port = Arc::new(TestPort::new());
-    let remote_a = create_remote_a(port.clone());
+    let proxy_a = create_proxy_a(port.clone());
 
-    let remote_b: Box<dyn B> = remote_a.service_object_as_return().unwrap_import().into_remote();
-    assert_eq!(remote_b.get(), 0);
-    remote_b.inc();
-    assert_eq!(remote_b.get(), 1);
-    remote_b.inc();
-    assert_eq!(remote_b.get(), 2);
+    let proxy_b: Box<dyn B> = proxy_a.service_object_as_return().unwrap_import().into_proxy();
+    assert_eq!(proxy_b.get(), 0);
+    proxy_b.inc();
+    assert_eq!(proxy_b.get(), 1);
+    proxy_b.inc();
+    assert_eq!(proxy_b.get(), 2);
 
-    drop(remote_a);
-    drop(remote_b);
+    drop(proxy_a);
+    drop(proxy_b);
     drop(port)
 }
 
@@ -137,12 +137,12 @@ fn service_object_as_argument() {
     init_logger();
 
     let port = Arc::new(TestPort::new());
-    let remote_a = create_remote_a(port.clone());
+    let proxy_a = create_proxy_a(port.clone());
 
     let service_object_b = Box::new(SimpleB::new()) as Box<dyn B>;
-    remote_a.service_object_as_argument(ServiceRef::Export(ServiceToExport::new(service_object_b)));
+    proxy_a.service_object_as_argument(ServiceRef::Export(ServiceToExport::new(service_object_b)));
 
-    drop(remote_a);
+    drop(proxy_a);
     drop(port)
 }
 
@@ -151,26 +151,26 @@ fn recursive_service_object() {
     init_logger();
 
     let port = Arc::new(TestPort::new());
-    let mut remote_a = create_remote_a(port.clone());
-    let mut remote_as = Vec::new();
-    remote_as.push(Arc::clone(&remote_a));
+    let mut proxy_a = create_proxy_a(port.clone());
+    let mut proxy_as = Vec::new();
+    proxy_as.push(Arc::clone(&proxy_a));
 
     for i in 0..10 {
-        assert_eq!(remote_a.get_recursion_count(), i);
-        remote_a = remote_a.recursive_service_object().unwrap_import().into_remote();
-        remote_as.push(Arc::clone(&remote_a));
+        assert_eq!(proxy_a.get_recursion_count(), i);
+        proxy_a = proxy_a.recursive_service_object().unwrap_import().into_proxy();
+        proxy_as.push(Arc::clone(&proxy_a));
     }
-    assert_eq!(remote_a.get_recursion_count(), 10);
+    assert_eq!(proxy_a.get_recursion_count(), 10);
 
-    let remote_b: Box<dyn B> = remote_a.service_object_as_return().unwrap_import().into_remote();
-    remote_b.inc();
-    assert_eq!(remote_b.get(), 1);
+    let proxy_b: Box<dyn B> = proxy_a.service_object_as_return().unwrap_import().into_proxy();
+    proxy_b.inc();
+    assert_eq!(proxy_b.get(), 1);
 
-    // remote_a + remote_b + recursive 10 remote_a = 12
+    // proxy_a + proxy_b + recursive 10 proxy_a = 12
     assert_eq!(port.register_len(), 12);
 
-    drop(remote_as);
-    drop(remote_a);
-    drop(remote_b);
+    drop(proxy_as);
+    drop(proxy_a);
+    drop(proxy_b);
     drop(port)
 }

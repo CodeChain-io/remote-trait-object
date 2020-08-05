@@ -92,11 +92,11 @@ fn run(barrier: Arc<Barrier>) -> ((Context, ServiceToImport<dyn Hello>), (Contex
 fn ping1() {
     let barrier = Arc::new(Barrier::new(1));
     let ((_ctx1, hello1), (_ctx2, hello2)) = run(Arc::clone(&barrier));
-    let hello1: Box<dyn Hello> = hello1.into_remote();
-    let hello2: Box<dyn Hello> = hello2.into_remote();
+    let hello1: Box<dyn Hello> = hello1.into_proxy();
+    let hello2: Box<dyn Hello> = hello2.into_proxy();
 
-    let ping1: Box<dyn Ping> = hello1.hey().unwrap_import().into_remote();
-    let ping2: Box<dyn Ping> = hello2.hey().unwrap_import().into_remote();
+    let ping1: Box<dyn Ping> = hello1.hey().unwrap_import().into_proxy();
+    let ping2: Box<dyn Ping> = hello2.hey().unwrap_import().into_proxy();
 
     ping1.ping();
     ping2.ping();
@@ -111,10 +111,10 @@ fn ping_concurrent1() {
     for _ in 0..100 {
         let barrier = Arc::new(Barrier::new(n + 1));
         let ((_ctx1, hello1), (_ctx2, hello2)) = run(Arc::clone(&barrier));
-        let hello1: Box<dyn Hello> = hello1.into_remote();
-        let hello2: Box<dyn Hello> = hello2.into_remote();
+        let hello1: Box<dyn Hello> = hello1.into_proxy();
+        let hello2: Box<dyn Hello> = hello2.into_proxy();
 
-        let pings: Vec<Box<dyn Ping>> = (0..n).map(|_| hello2.hey().unwrap_import().into_remote()).collect();
+        let pings: Vec<Box<dyn Ping>> = (0..n).map(|_| hello2.hey().unwrap_import().into_proxy()).collect();
         let joins: Vec<thread::JoinHandle<()>> = pings
             .into_iter()
             .map(|ping| {
@@ -139,10 +139,10 @@ fn ping_concurrent2() {
     for _ in 0..100 {
         let barrier = Arc::new(Barrier::new(n + 1));
         let ((_ctx1, hello1), (_ctx2, hello2)) = run(Arc::clone(&barrier));
-        let hello1: Box<dyn Hello> = hello1.into_remote();
-        let hello2: Box<dyn Hello> = hello2.into_remote();
+        let hello1: Box<dyn Hello> = hello1.into_proxy();
+        let hello2: Box<dyn Hello> = hello2.into_proxy();
 
-        let ping: Arc<dyn Ping> = hello2.hey().unwrap_import().into_remote();
+        let ping: Arc<dyn Ping> = hello2.hey().unwrap_import().into_proxy();
 
         let joins: Vec<thread::JoinHandle<()>> = (0..n)
             .map(|_| {

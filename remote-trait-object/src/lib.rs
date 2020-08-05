@@ -36,7 +36,7 @@ pub mod raw_exchange {
     //! This module is needed only you want to perform some raw exchange (or export/import) of services.
 
     pub use crate::service::export_import::{
-        export_service_into_handle, import_service_from_handle, ImportRemote, IntoSkeleton, Skeleton,
+        export_service_into_handle, import_service_from_handle, ImportProxy, IntoSkeleton, Skeleton,
     };
     pub use crate::service::HandleToExchange;
 }

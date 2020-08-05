@@ -49,8 +49,8 @@ pub trait IntoSkeleton<T: ?Sized + Service> {
 }
 
 /// Unused T is for avoiding violation of the orphan rule, like `IntoSkeleton`
-pub trait ImportRemote<T: ?Sized + Service>: Sized {
-    fn import_remote(port: Weak<dyn Port>, handle: HandleToExchange) -> Self;
+pub trait ImportProxy<T: ?Sized + Service>: Sized {
+    fn import_proxy(port: Weak<dyn Port>, handle: HandleToExchange) -> Self;
 }
 
 // These functions are utilities for the generic traits above
@@ -59,9 +59,9 @@ pub fn export_service_into_handle(context: &crate::context::Context, service: Sk
     context.get_port().upgrade().unwrap().register_service(service.raw)
 }
 
-pub fn import_service_from_handle<T: ?Sized + Service, P: ImportRemote<T>>(
+pub fn import_service_from_handle<T: ?Sized + Service, P: ImportProxy<T>>(
     context: &crate::context::Context,
     handle: HandleToExchange,
 ) -> P {
-    P::import_remote(context.get_port(), handle)
+    P::import_proxy(context.get_port(), handle)
 }

@@ -84,37 +84,37 @@ impl crate::macro_env::IntoSkeleton<dyn NullService> for std::sync::Arc<parking_
     }
 }
 #[derive(Debug)]
-pub struct NullServiceRemote {
+pub struct NullServiceProxy {
     handle: crate::macro_env::Handle,
 }
-impl NullService for NullServiceRemote {}
-impl crate::macro_env::Service for NullServiceRemote {}
-impl crate::macro_env::ImportRemote<dyn NullService> for Box<dyn NullService> {
-    fn import_remote(
+impl NullService for NullServiceProxy {}
+impl crate::macro_env::Service for NullServiceProxy {}
+impl crate::macro_env::ImportProxy<dyn NullService> for Box<dyn NullService> {
+    fn import_proxy(
         port: std::sync::Weak<dyn crate::macro_env::Port>,
         handle: crate::macro_env::HandleToExchange,
     ) -> Self {
-        Box::new(NullServiceRemote {
+        Box::new(NullServiceProxy {
             handle: crate::macro_env::Handle::new(handle, port),
         })
     }
 }
-impl crate::macro_env::ImportRemote<dyn NullService> for std::sync::Arc<dyn NullService> {
-    fn import_remote(
+impl crate::macro_env::ImportProxy<dyn NullService> for std::sync::Arc<dyn NullService> {
+    fn import_proxy(
         port: std::sync::Weak<dyn crate::macro_env::Port>,
         handle: crate::macro_env::HandleToExchange,
     ) -> Self {
-        std::sync::Arc::new(NullServiceRemote {
+        std::sync::Arc::new(NullServiceProxy {
             handle: crate::macro_env::Handle::new(handle, port),
         })
     }
 }
-impl crate::macro_env::ImportRemote<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
-    fn import_remote(
+impl crate::macro_env::ImportProxy<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
+    fn import_proxy(
         port: std::sync::Weak<dyn crate::macro_env::Port>,
         handle: crate::macro_env::HandleToExchange,
     ) -> Self {
-        std::sync::Arc::new(parking_lot::RwLock::new(NullServiceRemote {
+        std::sync::Arc::new(parking_lot::RwLock::new(NullServiceProxy {
             handle: crate::macro_env::Handle::new(handle, port),
         }))
     }
