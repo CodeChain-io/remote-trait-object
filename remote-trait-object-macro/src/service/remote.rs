@@ -21,6 +21,10 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::ToTokens;
 
 pub(super) fn generate_remote(source_trait: &syn::ItemTrait, args: &MacroArgs) -> Result<TokenStream2, TokenStream2> {
+    if args.no_stub {
+        return Ok(TokenStream2::new())
+    }
+
     let env_path = create_env_path();
 
     let trait_ident = source_trait.ident.clone();

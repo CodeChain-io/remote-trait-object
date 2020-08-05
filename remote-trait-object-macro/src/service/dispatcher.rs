@@ -22,7 +22,7 @@ pub(super) fn generate_dispatcher(
     source_trait: &syn::ItemTrait,
     args: &MacroArgs,
 ) -> Result<TokenStream2, TokenStream2> {
-    if args.remote_only {
+    if args.no_skeleton {
         return Ok(TokenStream2::new())
     }
 
