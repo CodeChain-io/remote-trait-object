@@ -52,8 +52,8 @@ pub trait Store: Service {
 
 // Some variations of traits for tests
 
-/// This fails to compile without `remote_only = true`
-#[service(remote_only = true, serde_format = Bincode)]
+/// This fails to compile without `no_skeleton`
+#[service(no_skeleton, serde_format = Bincode)]
 pub trait WeirdSmallStore: Service {
     fn order_pizza(&self, menu: Pizza, money: &&&&&&&&&&&&&&u32) -> String;
 }

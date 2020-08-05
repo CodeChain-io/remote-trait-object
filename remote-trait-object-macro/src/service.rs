@@ -43,28 +43,40 @@ impl<T: Parse> Parse for SingleArg<T> {
 #[derive(Default)]
 struct MacroArgsRaw {
     pub serde_format: Option<syn::Path>,
-    pub remote_only: Option<syn::LitBool>,
+    pub no_stub: Option<()>,
+    pub no_skeleton: Option<()>,
 }
 
 struct MacroArgs {
     pub serde_format: syn::Path,
-    pub remote_only: bool,
+    pub no_stub: bool,
+    pub no_skeleton: bool,
 }
 
 impl MacroArgsRaw {
     fn update(&mut self, ts: TokenStream2) -> syn::parse::Result<()> {
-        let x: SingleArg<TokenStream2> = syn::parse2(ts.clone())?;
-
-        if x.arg_name == quote::format_ident!("serde_format") {
-            let value = syn::parse2(x.arg_value)?;
-            if self.serde_format.replace(value).is_some() {
-                Err(syn::parse::Error::new_spanned(ts, "Duplicated arguments"))
+        if let Ok(arg) = syn::parse2::<syn::Ident>(ts.clone()) {
+            return if arg == quote::format_ident!("no_stub") {
+                if self.no_stub.replace(()).is_some() {
+                    Err(syn::parse::Error::new_spanned(ts, "Duplicated arguments"))
+                } else {
+                    Ok(())
+                }
+            } else if arg == quote::format_ident!("no_skeleton") {
+                if self.no_skeleton.replace(()).is_some() {
+                    Err(syn::parse::Error::new_spanned(ts, "Duplicated arguments"))
+                } else {
+                    Ok(())
+                }
             } else {
-                Ok(())
+                Err(syn::parse::Error::new_spanned(ts, "Unsupported argument"))
             }
-        } else if x.arg_name == quote::format_ident!("remote_only") {
-            let value = syn::parse2(x.arg_value)?;
-            if self.remote_only.replace(value).is_some() {
+        }
+
+        let arg: SingleArg<TokenStream2> = syn::parse2(ts.clone())?;
+        if arg.arg_name == quote::format_ident!("serde_format") {
+            let value = syn::parse2(arg.arg_value)?;
+            if self.serde_format.replace(value).is_some() {
                 Err(syn::parse::Error::new_spanned(ts, "Duplicated arguments"))
             } else {
                 Ok(())
@@ -79,7 +91,8 @@ impl MacroArgsRaw {
             serde_format: self
                 .serde_format
                 .unwrap_or_else(|| syn::parse2(quote! {remote_trait_object::macro_env::DefaultSerdeFormat}).unwrap()),
-            remote_only: self.remote_only.map(|b| b.value).unwrap_or(false),
+            no_stub: self.no_stub.map(|_| true).unwrap_or(false),
+            no_skeleton: self.no_skeleton.map(|_| true).unwrap_or(false),
         }
     }
 }

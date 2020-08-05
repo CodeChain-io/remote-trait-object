@@ -160,14 +160,14 @@ impl Hello for SimpleHello {
     }
 }
 
-/// This trait causes a compile error without `remote_only = true`
-#[rto_macro::service(remote_only = true)]
+/// This trait causes a compile error without `no_skeleton`
+#[rto_macro::service(no_skeleton)]
 trait HelloWithRef: Service {
     fn f(&self, v: &[&(&i32, &i32)]) -> i32;
 }
 
 #[test]
-fn macro_remote_only() {
+fn macro_no_skeleton() {
     let port = Arc::new(TestPort::new());
     let port_weak = Arc::downgrade(&port);
 
