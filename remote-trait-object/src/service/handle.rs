@@ -14,8 +14,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::*;
 use crate::packet::Packet;
-use crate::service::{Handle, MethodId, SerdeFormat};
+use crate::service::{MethodId, SerdeFormat};
+
+/// Proxy service will carry this.
+#[derive(Debug)]
+pub struct Handle {
+    pub id: ServiceObjectId,
+    pub port: Weak<dyn Port>,
+}
+
+impl Handle {
+    pub fn new(imported_id: HandleToExchange, port: Weak<dyn Port>) -> Self {
+        Handle {
+            id: imported_id.0,
+            port,
+        }
+    }
+}
 
 impl Handle {
     /// This method is the core of Handle, which serves as a "call stub" for the service trait's method.
@@ -42,7 +59,7 @@ impl Drop for Handle {
     fn drop(&mut self) {
         self.port
             .upgrade()
-            .expect("You must drop the remote service before the RTO context is dropped")
+            .expect("You must drop the proxy object before the RTO context is dropped")
             .delete_request(self.id);
     }
 }

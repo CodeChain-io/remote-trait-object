@@ -58,8 +58,8 @@ pub struct ServiceToImport<T: ?Sized + Service> {
 }
 
 impl<T: ?Sized + Service> ServiceToImport<T> {
-    pub fn into_remote<P: ImportRemote<T>>(self) -> P {
-        P::import_remote(self.port, self.handle)
+    pub fn into_proxy<P: ImportProxy<T>>(self) -> P {
+        P::import_proxy(self.port, self.handle)
     }
 
     pub fn cast_service<U: ?Sized + Service>(self) -> Result<ServiceToImport<U>, ()> {
@@ -179,7 +179,7 @@ impl<T: ?Sized + Service> Serialize for ServiceRef<T> {
         match self {
             ServiceRef::Export(x) => x.serialize(serializer),
             ServiceRef::Import(_) => panic!(
-                "If you want to re-export an imported object, first completely import it with `into_remote()` and make it into `ServiceToExport`."
+                "If you want to re-export an imported object, first completely import it with `into_proxy()` and make it into `ServiceToExport`."
             ),
         }
     }
@@ -298,8 +298,8 @@ mod tests {
             }
         }
         impl Service for FooImpl {}
-        impl ImportRemote<dyn Foo> for Box<dyn Foo> {
-            fn import_remote(_port: Weak<dyn Port>, handle: HandleToExchange) -> Box<dyn Foo> {
+        impl ImportProxy<dyn Foo> for Box<dyn Foo> {
+            fn import_proxy(_port: Weak<dyn Port>, handle: HandleToExchange) -> Box<dyn Foo> {
                 Box::new(FooImpl {
                     handle_to_exchange: handle,
                 })
@@ -314,14 +314,14 @@ mod tests {
                 let handle_to_exchange = HandleToExchange(32);
                 let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
                 let dyn_foo: ServiceRef<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
-                assert_eq!(dyn_foo.unwrap_import().into_remote::<Box<dyn Foo>>().get_handle_to_exchange().0, 32);
+                assert_eq!(dyn_foo.unwrap_import().into_proxy::<Box<dyn Foo>>().get_handle_to_exchange().0, 32);
             }
 
             {
                 let handle_to_exchange = HandleToExchange(2);
                 let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
                 let dyn_foo: ServiceRef<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
-                assert_eq!(dyn_foo.unwrap_import().into_remote::<Box<dyn Foo>>().get_handle_to_exchange().0, 2);
+                assert_eq!(dyn_foo.unwrap_import().into_proxy::<Box<dyn Foo>>().get_handle_to_exchange().0, 2);
             }
         }
     }

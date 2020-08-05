@@ -47,7 +47,7 @@ fn test_runner(f: impl Fn(Box<dyn Store>)) {
 
     let (rto_context, store): (Context, ServiceToImport<dyn Store>) =
         Context::with_initial_service_import(Config::default_setup(), send1, recv1);
-    let store: Box<dyn Store> = store.into_remote();
+    let store: Box<dyn Store> = store.into_proxy();
 
     f(store);
 
@@ -146,7 +146,7 @@ mod tests {
 
         let (rto_context, store): (Context, ServiceToImport<dyn Store>) =
             Context::with_initial_service_import(Config::default_setup(), send1, recv1);
-        let mut store: Box<dyn Store> = store.into_remote();
+        let mut store: Box<dyn Store> = store.into_proxy();
 
         let card = Box::new(MyCreditCard {
             balance: 0,
@@ -175,7 +175,7 @@ mod tests {
 
         let (rto_context, store): (Context, ServiceToImport<dyn Store>) =
             Context::with_initial_service_import(Config::default_setup(), send1, recv1);
-        let store: Box<dyn WeirdSmallStore> = store.cast_service().unwrap().into_remote();
+        let store: Box<dyn WeirdSmallStore> = store.cast_service().unwrap().into_proxy();
         assert_eq!(store.order_pizza(Pizza::Pepperoni, &&&&&&&&&&&&&&13), "Here's a delicious pepperoni pizza");
 
         drop(store);

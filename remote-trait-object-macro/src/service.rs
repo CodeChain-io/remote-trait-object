@@ -21,7 +21,7 @@ use syn::Token;
 
 pub mod dispatcher;
 pub mod id;
-pub mod remote;
+pub mod proxy;
 
 struct SingleArg<T: Parse> {
     pub arg_name: syn::Ident,
@@ -43,21 +43,21 @@ impl<T: Parse> Parse for SingleArg<T> {
 #[derive(Default)]
 struct MacroArgsRaw {
     pub serde_format: Option<syn::Path>,
-    pub no_stub: Option<()>,
+    pub no_proxy: Option<()>,
     pub no_skeleton: Option<()>,
 }
 
 struct MacroArgs {
     pub serde_format: syn::Path,
-    pub no_stub: bool,
+    pub no_proxy: bool,
     pub no_skeleton: bool,
 }
 
 impl MacroArgsRaw {
     fn update(&mut self, ts: TokenStream2) -> syn::parse::Result<()> {
         if let Ok(arg) = syn::parse2::<syn::Ident>(ts.clone()) {
-            return if arg == quote::format_ident!("no_stub") {
-                if self.no_stub.replace(()).is_some() {
+            return if arg == quote::format_ident!("no_proxy") {
+                if self.no_proxy.replace(()).is_some() {
                     Err(syn::parse::Error::new_spanned(ts, "Duplicated arguments"))
                 } else {
                     Ok(())
@@ -91,7 +91,7 @@ impl MacroArgsRaw {
             serde_format: self
                 .serde_format
                 .unwrap_or_else(|| syn::parse2(quote! {remote_trait_object::macro_env::DefaultSerdeFormat}).unwrap()),
-            no_stub: self.no_stub.map(|_| true).unwrap_or(false),
+            no_proxy: self.no_proxy.map(|_| true).unwrap_or(false),
             no_skeleton: self.no_skeleton.map(|_| true).unwrap_or(false),
         }
     }
@@ -121,12 +121,12 @@ pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, 
 
     let id = id::generate_id(&source_trait, &args)?;
     let dispatcher = dispatcher::generate_dispatcher(&source_trait, &args)?;
-    let remote = remote::generate_remote(&source_trait, &args)?;
+    let proxy = proxy::generate_proxy(&source_trait, &args)?;
 
     Ok(quote! {
         #source_trait
         #id
         #dispatcher
-        #remote
+        #proxy
     })
 }
