@@ -19,7 +19,7 @@ use crate::service::MethodId;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-const UNDECIDED_SLOT: u32 = 4444;
+const UNDECIDED_SLOT: u32 = 4_294_967_295;
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct SlotId(u32);
@@ -72,7 +72,7 @@ impl SlotId {
     }
 }
 
-const SLOT_CALL_OR_RETURN_INDICATOR: SlotId = SlotId(1024);
+const SLOT_CALL_OR_RETURN_INDICATOR: SlotId = SlotId(2_147_483_648);
 
 /// FIXME: Replace this hard-coded value to some constant evaluation
 const PACKET_HEADER_SIZE: usize = 12;
