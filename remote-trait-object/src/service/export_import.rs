@@ -22,6 +22,17 @@ pub struct Skeleton {
     pub(crate) raw: Arc<dyn Dispatch>,
 }
 
+impl Clone for Skeleton {
+    /// Clones a `Skeleton`, while sharing the actual single service object.
+    ///
+    /// This is useful when you want to export a single service object to multiple connections.
+    fn clone(&self) -> Self {
+        Self {
+            raw: Arc::clone(&self.raw),
+        }
+    }
+}
+
 impl Skeleton {
     pub fn new<T: ?Sized + Service>(service: impl IntoSkeleton<T>) -> Self {
         service.into_skeleton()
