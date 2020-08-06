@@ -125,9 +125,8 @@ impl Context {
         transport_recv: R,
     ) -> Self {
         let null_to_export = crate::service::create_null_service();
-        let (ctx, null_to_import): (Self, ServiceToImport<dyn crate::service::NullService>) =
+        let (ctx, _null_to_import): (Self, ServiceToImport<dyn crate::service::NullService>) =
             Self::with_initial_service(config, transport_send, transport_recv, ServiceToExport::new(null_to_export));
-        let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_proxy();
         ctx
     }
 
@@ -137,9 +136,8 @@ impl Context {
         transport_recv: R,
         initial_service: ServiceToExport<A>,
     ) -> Self {
-        let (ctx, null_to_import): (Self, ServiceToImport<dyn crate::service::NullService>) =
+        let (ctx, _null_to_import): (Self, ServiceToImport<dyn crate::service::NullService>) =
             Self::with_initial_service(config, transport_send, transport_recv, initial_service);
-        let _null_to_import: Box<dyn crate::service::NullService> = null_to_import.into_proxy();
         ctx
     }
 
