@@ -202,10 +202,6 @@ impl Context {
         (ctx, initial_service)
     }
 
-    pub fn register_service(&self, service: Skeleton) -> HandleToExchange {
-        self.port.as_ref().unwrap().register_service(service.raw)
-    }
-
     pub(crate) fn get_port(&self) -> Weak<dyn Port> {
         Arc::downgrade(&self.port.clone().expect("It becomes None only when the context is dropped.")) as Weak<dyn Port>
     }
