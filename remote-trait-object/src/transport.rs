@@ -17,7 +17,7 @@
 //! Abstractions of a **transport** that carries out an actual communication for `remote-trait-object`.
 //!
 //! You have to implement these traits in your own requirement, to use `remote-trait-object` over them.
-//! It can be an ordinary in-process communication, an inter-process communication, or even a networking over
+//! It can be ordinary in-process communication, inter-process communication, or even networking over
 //! different machines.
 
 pub(crate) mod multiplex;
@@ -47,7 +47,7 @@ pub enum TransportError {
 
 /// An abstraction of a sending half of the transport
 ///
-/// All outgoing packet will be delivered to a single instance of this trait, which has been given
+/// All outgoing packets will be delivered to a single instance of this trait, which has been given
 /// when [`Context`] is created.
 ///
 /// [`Context`]: ../struct.Context.html
@@ -79,7 +79,7 @@ pub trait TransportRecv: Send {
 /// A switch that can be separately managed by another thread.
 ///
 /// This is the only way to wake up a blocking [`send()`] or [`recv()`] by yourself. (Not by the other end)
-/// [`TransportSend`] and [`TransportRecv`] must be able to provide such switch that triggers [`Termination`] error for its own [`send()`] or [`recv()`].
+/// [`TransportSend`] and [`TransportRecv`] must be able to provide such a switch that triggers [`Termination`] error for its own [`send()`] or [`recv()`].
 ///
 /// [`TransportSend`]: trait.TransportSend.html
 /// [`TransportRecv`]: trait.TransportRecv.html

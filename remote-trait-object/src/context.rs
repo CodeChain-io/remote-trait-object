@@ -73,7 +73,7 @@ pub struct Config {
 
     /// A timeout for a remote method call.
     ///
-    /// All remote method invocations through your remote object and delete requests (that happens when you drop a remote object)
+    /// All remote method invocations through your proxy object and delete requests (that happens when you drop a proxy object)
     /// will have this timeout. If it exceeds, it will cause an error.
     ///
     /// Use `None` for to wait indefinitely.
@@ -103,6 +103,23 @@ impl Config {
     }
 }
 
+/// One end of a `remote-trait-object` connection.
+///
+/// If you establish a remote-trait-object connection,
+/// there must be two ends and each will be provided as a `Context` to each user on both sides.
+///
+/// A context holds multiple things to function as a `remote-trait-object` connection end.
+/// Since the connection is symmetric, it manages both _server_ and _client_ toward the other end.
+/// It also manages a _registry_ that contains all exported services.
+/// The server will look up the registry to find a target object for handling an incoming method invocation.
+///
+/// Note that `remote-trait-object` is a point-to-point connection protocol.
+/// Exporting & importing a service are always performed on a specific connection,
+/// which is toward the other side, or another instance of `Context`.
+///
+/// If you created an instance of this, that means you have a connection that has been successfully established **once**,
+/// but is not guaranteed to be alive.
+/// If the other end (or the other `Context`) is closed, most operations performed on `Context` will just cause an error.
 pub struct Context {
     config: Config,
     multiplexer: Option<Multiplexer>,
@@ -119,6 +136,14 @@ impl std::fmt::Debug for Context {
 }
 
 impl Context {
+    /// Creates a new context without any initial services.
+    ///
+    /// If you decide to use this, you have to exchange raw [`HandleToExchange`] at least once using a secondary transportation means.
+    /// It is really rarely needed, so please consider introducing an initializing service as an initial service, to avoid any raw exchange.
+    ///
+    /// Please see [`with_initial_service()`] for a general explanation of creation of `Context`.
+    ///
+    /// [`with_initial_service()`]: ./struct.Context.html#method.with_initial_service
     pub fn new<S: TransportSend + 'static, R: TransportRecv + 'static>(
         config: Config,
         transport_send: S,
@@ -130,6 +155,12 @@ impl Context {
         ctx
     }
 
+    /// Creates a new context only exporting a service, but importing nothing.
+    ///
+    /// The other end's context must be initialized with `with_initial_service_import()`.
+    /// Please see [`with_initial_service()`] for a general explanation of creation of `Context`.
+    ///
+    /// [`with_initial_service()`]: ./struct.Context.html#method.with_initial_service
     pub fn with_initial_service_export<S: TransportSend + 'static, R: TransportRecv + 'static, A: ?Sized + Service>(
         config: Config,
         transport_send: S,
@@ -141,6 +172,12 @@ impl Context {
         ctx
     }
 
+    /// Creates a new context only importing a service, but exporting nothing.
+    ///
+    /// The other end's context must be initialized with `with_initial_service_export()`.
+    /// Please see [`with_initial_service()`] for a general explanation of creation of `Context`.
+    ///
+    /// [`with_initial_service()`]: ./struct.Context.html#method.with_initial_service
     pub fn with_initial_service_import<S: TransportSend + 'static, R: TransportRecv + 'static, B: ?Sized + Service>(
         config: Config,
         transport_send: S,
@@ -152,6 +189,15 @@ impl Context {
         (ctx, import)
     }
 
+    /// Creates a new context exchanging two services, one for export and one for import.
+    ///
+    /// It takes `initial_service` and registers in it, and passes a `HandleToExchange` internally. (_export_).
+    /// Also it receives a `HandleToExchange` from the other side, and makes it into a proxy object. (_import_)
+    ///
+    /// The other end's context must be initialized with `with_initial_service()` as well, and
+    /// such processes will be symmetric for both.
+    ///
+    /// [`HandleToExchange`]: ../raw_exchange/struct.HandleToExchange.html
     pub fn with_initial_service<
         S: TransportSend + 'static,
         R: TransportRecv + 'static,
@@ -204,16 +250,38 @@ impl Context {
         Arc::downgrade(&self.port.clone().expect("It becomes None only when the context is dropped.")) as Weak<dyn Port>
     }
 
+    /// Clears all service objects in its registry.
+    ///
+    /// The most usual way of deleting a service object is dropping its proxy object on the client side, and letting it request a delete to the exporter side.
+    /// However, in some cases (especially while you're trying to shut down the connection) it is useful to clear all exported service objects
+    /// **by the exporter side itself**.
+    ///
+    /// Note that it will cause an error if the client side drops a proxy object of an already deleted (by this method) service object.
+    /// Consider calling [`disable_garbage_collection()`] on the other end if there's such an issue.
+    ///
+    /// Note also that this might trigger _delete request_ as a side effect since the service object might own a proxy object.
+    ///
+    /// [`disable_garbage_collection()`]: ./struct.Context.html#method.disable_garbage_collection
     pub fn clear_service_registry(&mut self) {
         self.port.as_mut().unwrap().clear_registry();
     }
 
+    /// Disables all _delete request_ from this end to the other end.
+    ///
+    /// If you call this, all `drop()` of proxy objects imported from this context won't send a delete request anymore.
+    /// This is useful when you're not sure if the connection is still alive, but you have to close your side's context anyway.
     pub fn disable_garbage_collection(&self) {
         self.port.as_ref().expect("It becomes None only when the context is dropped.").set_no_drop();
     }
 
-    /// TODO: write a good explanation
-    /// FIXME: use timeout
+    /// Closes a context with a firm synchronization with the other end.
+    ///
+    /// If you call this method, it will block until the other end calls `firm_close()` too.
+    /// This is useful when you want to assure that two ends never suffer from 'other end has been closed' error.
+    /// If one of the contexts dropped too early, all remote calls (including delete request) from the other end will fail.
+    /// To avoid such a situation, consider using this to stay alive as long as it is required.
+    ///
+    /// FIXME: currently it doesn't use `timeout` and blocks indefinitely.
     pub fn firm_close(self, _timeout: Option<std::time::Duration>) -> Result<(), Self> {
         let barrier = Arc::clone(&self.firm_close_barrier);
         let t = std::thread::spawn(move || {
@@ -227,6 +295,7 @@ impl Context {
 }
 
 impl Drop for Context {
+    /// This will delete all service objects after calling `disable_garbage_collection()` internally.
     fn drop(&mut self) {
         // We have to clean all registered service, as some might hold another proxy object inside, which refers this context's port.
         // For such case, we have to make them be dropped first before we unwrap the Arc<BasicPort>
