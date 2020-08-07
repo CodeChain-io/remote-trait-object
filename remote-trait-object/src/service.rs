@@ -43,8 +43,32 @@ where
     }
 }
 
-/// All service trait must implement this.
-/// This trait serves as a mere marker trait with two bounds
+/// The `Service` trait is a marker that is used as a supertrait for a service trait,
+/// indicating that the trait is for a service.
+///
+/// It is bound to `Send` and `Sync`, and that's all.
+/// Please put this as a supertrait for every service trait, and implement it
+/// for all concrete service implementers.
+///
+/**
+## Example
+```
+use remote_trait_object::*;
+
+#[service]
+pub trait Piano: Service {
+    fn play(&mut self);
+}
+
+struct Steinway;
+impl Service for Steinway {}
+impl Piano for Steinway {
+    fn play(&mut self) {
+        println!("Do Re Mi");
+    }
+}
+```
+**/
 pub trait Service: Send + Sync {}
 
 /// A serde de/serialization format that will be used for a service.

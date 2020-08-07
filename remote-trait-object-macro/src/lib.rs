@@ -33,6 +33,12 @@ fn create_env_path() -> syn::Path {
 }
 
 /// It generates all necessary helper `struct`s that makes the trait be able to be used as a service.
+///
+/// It takes three arguments optionally
+/// - `serde_format = _` - Specify a type that implements `trait SerdeFormat`. The default is [serde_cbor](https://github.com/pyfisch/cbor)
+/// - `no_proxy` - If provided, the trait will be used only as a service object.
+/// - `no_skeleton` - If provided, the trait will be used only as a proxy object.
+///
 /// There will be many new public `struct`s, but you don't have to know about them.
 #[proc_macro_attribute]
 pub fn service(args: TokenStream, input: TokenStream) -> TokenStream {

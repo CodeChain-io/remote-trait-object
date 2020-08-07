@@ -56,7 +56,7 @@ impl Handle {
 }
 
 impl Drop for Handle {
-    /// Dropping handle will be signaled to the exporter, so that it can remove the service object as well.
+    /// Dropping handle will be signaled to the exporter (_delete request_), so that it can remove the service object as well.
     fn drop(&mut self) {
         self.port
             .upgrade()

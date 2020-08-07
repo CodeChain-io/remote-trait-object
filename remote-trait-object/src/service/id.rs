@@ -42,6 +42,10 @@ pub struct IdMap {
     pub method_map: Option<HashMap<(String, String), MethodId>>,
 }
 
+/// A special function that sets static & global identifiers for the methods.
+///
+/// It will be explained in more detail in the next version :)
+///
 /// This is supposed to be called only once during the entire lifetime of the process.
 /// However it is ok to call multiple times if the IdMap is identical, especially in the
 /// tests where each test share that static id list

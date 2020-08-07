@@ -19,12 +19,41 @@ use super::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// This represents transportable identifier of the service object
-/// and should be enough to construct a handle along with the pointer to the port
-/// which this service belong to
+/// An identifier of the skeleton.
+///
+/// This represents an identifier of a skeleton, and can create a proxy object using [`import_service_from_handle()`]
+///
+/// Note that you will never need this if you do only plain export & import using [`ServiceRef`], [`ServiceToExport`], or [`ServiceToImport`].
+/// See the [module-level documentation] to understand when to use this.
+///
+/// [`import_service_from_handle()`]: ../raw_exchange/fn.import_service_from_handle.html
+/// [`ServiceToExport`]: ../struct.ServiceToExport.html
+/// [`ServiceToImport`]: ../struct.ServiceToImport.html
+/// [`ServiceRef`]: ../enum.ServiceRef.html
+/// [module-level documentation]: ../raw_exchange/index.html
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct HandleToExchange(pub(crate) ServiceObjectId);
 
+/// An opaque service to register in the context.
+///
+/// See the general description of the concept _skeleton_ [here](https://github.com/CodeChain-io/remote-trait-object)
+/// and the definition in this crate [here](https://github.com/CodeChain-io/remote-trait-object).
+///
+/// It is constructed with a service object with whichever smart pointer you want.
+/// Depending on use of `&mut self` in the methods in the service trait, some or all `Box<>`, `Arc<>`, `Arc<RwLock<>>` will implement
+/// [`IntoSkeleton`] automatically by the proc macro.
+/// Please see [this section](https://github.com/CodeChain-io/remote-trait-object) for more detail about smart pointers.
+///
+/// `Skeleton` is useful when you want to erase the trait, and hold it as an opaque service that will be registered later.
+///
+/// Note that you will never need this if you do only plain export & import using [`ServiceRef`], [`ServiceToExport`], or [`ServiceToImport`].
+/// See the [module-level documentation] to understand when to use this.
+///
+/// [`IntoSkeleton`]: trait.IntoSkeleton.html
+/// [`ServiceToExport`]: ../struct.ServiceToExport.html
+/// [`ServiceToImport`]: ../struct.ServiceToImport.html
+/// [`ServiceRef`]: ../enum.ServiceRef.html
+/// [module-level documentation]: ../raw_exchange/index.html
 pub struct Skeleton {
     pub(crate) raw: Arc<dyn Dispatch>,
 }
@@ -57,26 +86,43 @@ pub fn create_skeleton(raw: Arc<dyn Dispatch>) -> Skeleton {
 // These tratis will be implement by `dyn ServiceTrait` where `T = dyn ServiceTrait` as well.
 // Macro will implement this trait with the target(expanding) service trait.
 
-/// Unused T is for avoiding violation of the orphan rule
-/// T will be local type for the crate, and that makes it possible to
-/// ```ignore
-/// impl IntoSkeleton<dyn MyService> for Arc<dyn MyService>
-/// ```
+/// Conversion into a [`Skeleton`], from a smart pointer of a service object.
+///
+/// By attaching `[remote_trait_object::service]` on a trait, smart pointers of the trait will automatically implement this.
+/// This is required if you want to create a [`Skeleton`] or [`ServiceToExport`].
+///
+/// [`ServiceToExport`]: ../struct.ServiceToExport.html
+// Unused T is for avoiding violation of the orphan rule
+// T will be local type for the crate, and that makes it possible to
+// impl IntoSkeleton<dyn MyService> for Arc<dyn MyService>
 pub trait IntoSkeleton<T: ?Sized + Service> {
     fn into_skeleton(self) -> Skeleton;
 }
 
-/// Unused T is for avoiding violation of the orphan rule, like `IntoSkeleton`
+/// Conversion into a smart pointer of a service object, from [`HandleToExchange`].
+///
+/// By attaching `[remote_trait_object::service]` on a trait, smart pointers of the trait will automatically implement this.
+/// This is required if you want to create a proxy object from [`HandleToExchange`] or [`ServiceToImport`].
+///
+/// [`ServiceToImport`]: ../struct.ServiceToImport.html
+// Unused T is for avoiding violation of the orphan rule, like `IntoSkeleton`
 pub trait ImportProxy<T: ?Sized + Service>: Sized {
     fn import_proxy(port: Weak<dyn Port>, handle: HandleToExchange) -> Self;
 }
 
-// These functions are utilities for the generic traits above
-
+/// Exports a skeleton and returns a handle to it.
+///
+/// Once you create an instance of skeleton, you will eventually export it calling this.
+/// Take the handle to the other side's context and call [`import_service_from_handle`] to import it into a proxy object.
+/// If not, the service object will remain in the Context forever doing nothing.
 pub fn export_service_into_handle(context: &crate::context::Context, service: Skeleton) -> HandleToExchange {
     context.get_port().upgrade().unwrap().register_service(service.raw)
 }
 
+/// Imports a handle into a proxy object.
+///
+/// Once you receive an instance of [`HandleToExchange`], you will eventually import it calling this.
+/// Such handles must be from the other side's context.
 pub fn import_service_from_handle<T: ?Sized + Service, P: ImportProxy<T>>(
     context: &crate::context::Context,
     handle: HandleToExchange,
