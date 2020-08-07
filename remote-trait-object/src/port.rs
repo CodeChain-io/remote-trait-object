@@ -22,7 +22,7 @@ pub use self::types::Handler;
 use crate::forwarder::ServiceForwarder;
 use crate::forwarder::{ServiceObjectId, DELETE_REQUEST};
 use crate::packet::{Packet, PacketView};
-use crate::raw_exchange::Skeleton;
+use crate::raw_exchange::{HandleToExchange, Skeleton};
 use crate::service::*;
 use crate::Config;
 use client::Client;

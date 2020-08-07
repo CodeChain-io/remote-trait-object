@@ -22,7 +22,7 @@ use remote_trait_object_macro as rto_macro;
 use crate::forwarder::ServiceObjectId;
 use crate::packet::{Packet, PacketView};
 use crate::port::*;
-use crate::raw_exchange::{ImportProxy, IntoSkeleton};
+use crate::raw_exchange::{HandleToExchange, ImportProxy, IntoSkeleton};
 use crate::service::*;
 use parking_lot::Mutex;
 use std::collections::HashMap;

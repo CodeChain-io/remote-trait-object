@@ -16,6 +16,7 @@
 
 use super::*;
 use crate::packet::Packet;
+use crate::raw_exchange::HandleToExchange;
 use crate::service::{MethodId, SerdeFormat};
 
 /// Proxy service will carry this.

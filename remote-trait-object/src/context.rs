@@ -184,9 +184,9 @@ impl Context {
         let port_weak = Arc::downgrade(&port) as Weak<dyn Port>;
         let meta_service = <Box<dyn MetaService> as ImportProxy<dyn MetaService>>::import_proxy(
             Weak::clone(&port_weak),
-            crate::service::HandleToExchange(crate::forwarder::META_SERVICE_OBJECT_ID),
+            HandleToExchange(crate::forwarder::META_SERVICE_OBJECT_ID),
         );
-        let initial_handle = crate::service::HandleToExchange(crate::forwarder::INITIAL_SERVICE_OBJECT_ID);
+        let initial_handle = HandleToExchange(crate::forwarder::INITIAL_SERVICE_OBJECT_ID);
 
         let ctx = Context {
             config,
