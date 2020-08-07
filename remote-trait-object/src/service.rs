@@ -22,18 +22,11 @@ pub mod serde_support;
 
 use crate::forwarder::ServiceObjectId;
 use crate::port::Port;
-use serde::{Deserialize, Serialize};
 use std::sync::Weak;
 
 pub use handle::Handle;
 pub use null::{create_null_service, NullService};
 pub type MethodId = u32;
-
-/// This represents transportable identifier of the service object
-/// and should be enough to construct a handle along with the pointer to the port
-/// which this service belong to
-#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
-pub struct HandleToExchange(pub(crate) ServiceObjectId);
 
 /// Exporter sides's interface to the service object. This will be implemented
 /// by each service trait's unique wrapper in the macro

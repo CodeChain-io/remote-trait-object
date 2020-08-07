@@ -16,7 +16,14 @@
 
 use super::Dispatch;
 use super::*;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+/// This represents transportable identifier of the service object
+/// and should be enough to construct a handle along with the pointer to the port
+/// which this service belong to
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
+pub struct HandleToExchange(pub(crate) ServiceObjectId);
 
 pub struct Skeleton {
     pub(crate) raw: Arc<dyn Dispatch>,
