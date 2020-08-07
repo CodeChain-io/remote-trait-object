@@ -11,6 +11,8 @@ https://docs.rs/remote-trait-object)
 
 A simple and powerful Rust remote method invocation library based on Rust trait objects.
 
+See the [documentation](https://docs.rs/remote-trait-object).
+
 ## License
 
 Licensed under either of
