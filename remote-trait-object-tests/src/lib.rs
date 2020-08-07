@@ -19,6 +19,7 @@ extern crate log;
 
 #[cfg(test)]
 mod ping;
+mod simple;
 mod test_store;
 pub mod transport;
 
