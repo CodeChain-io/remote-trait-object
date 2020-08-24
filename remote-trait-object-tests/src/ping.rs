@@ -145,3 +145,13 @@ fn ping_concurrent2() {
         drop(hello2);
     }
 }
+
+#[test]
+#[should_panic(expected = "You invoked a method of a null proxy object.")]
+fn null_proxy() {
+    let barrier = Arc::new(Barrier::new(1));
+    let ((ctx1, _), (_ctx2, _)) = run(Arc::clone(&barrier));
+    let null_handle = remote_trait_object::raw_exchange::HandleToExchange::create_null();
+    let null_proxy: Box<dyn Ping> = remote_trait_object::raw_exchange::import_service_from_handle(&ctx1, null_handle);
+    null_proxy.ping();
+}

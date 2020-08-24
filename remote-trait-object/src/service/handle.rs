@@ -1,4 +1,5 @@
 use super::*;
+use crate::forwarder::NULL_ID;
 use crate::packet::Packet;
 use crate::raw_exchange::HandleToExchange;
 use crate::service::{MethodId, SerdeFormat};
@@ -29,6 +30,8 @@ impl Handle {
         method: MethodId,
         args: &S,
     ) -> D {
+        assert_ne!(self.id, NULL_ID, "You invoked a method of a null proxy object.");
+
         super::serde_support::port_thread_local::set_port(self.port.clone());
         let args = F::to_vec(args).unwrap();
         let packet = Packet::new_request(self.id, method, &args);
@@ -42,9 +45,11 @@ impl Handle {
 impl Drop for Handle {
     /// Dropping handle will be signaled to the exporter (_delete request_), so that it can remove the service object as well.
     fn drop(&mut self) {
-        self.port
-            .upgrade()
-            .expect("You must drop the proxy object before the RTO context is dropped")
-            .delete_request(self.id);
+        if self.id != NULL_ID {
+            self.port
+                .upgrade()
+                .expect("You must drop the proxy object before the RTO context is dropped")
+                .delete_request(self.id);
+        }
     }
 }

@@ -82,6 +82,7 @@ mod tests {
         test_runner(f);
     }
 
+    #[allow(clippy::same_item_push)]
     #[test]
     fn test_order3() {
         fn f(store: Box<dyn Store>) {

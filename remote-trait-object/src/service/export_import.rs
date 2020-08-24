@@ -18,6 +18,18 @@ use std::sync::Arc;
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct HandleToExchange(pub(crate) ServiceObjectId);
 
+impl HandleToExchange {
+    /// Creates a null handle.
+    ///
+    /// Any proxy object made from this will always panic for all methods.
+    /// If such proxy object is dropped, it won't send any delete request, so never fails.
+    ///
+    /// It is useful when you have a proxy object which has to be initialized later.
+    pub fn create_null() -> Self {
+        Self(crate::forwarder::NULL_ID)
+    }
+}
+
 /// An opaque service to register in the context.
 ///
 /// See the general description of the concept _skeleton_ [here](https://github.com/CodeChain-io/remote-trait-object)
