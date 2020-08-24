@@ -12,6 +12,7 @@ pub type ServiceObjectId = u32;
 pub const DELETE_REQUEST: crate::service::MethodId = std::u32::MAX;
 pub const META_SERVICE_OBJECT_ID: ServiceObjectId = 0;
 pub const INITIAL_SERVICE_OBJECT_ID: ServiceObjectId = 1;
+pub const NULL_ID: ServiceObjectId = std::u32::MAX;
 
 pub struct ServiceForwarder {
     service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>>,
