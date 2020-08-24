@@ -1,6 +1,6 @@
 [package]
 name = "remote-trait-object"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["CodeChain Team <hi@codechain.io>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
