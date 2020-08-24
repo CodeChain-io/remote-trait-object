@@ -125,3 +125,14 @@ pub fn import_service_from_handle<T: ?Sized + Service, P: ImportProxy<T>>(
 ) -> P {
     P::import_proxy(context.get_port(), handle)
 }
+
+/// Create a proxy object that always panic for all methods.
+///
+/// This is same as using [`create_null()`] and [`import_service_from_handle()`] but you don't even have to specify the [`Context`] here.
+///
+/// [`create_null()`]: ./struct.HandleToExchange.html#method.create_null
+/// [`import_service_from_handle()`]: ./fn.import_service_from_handle.html
+/// [`Context`]: ../struct.Context.html
+pub fn import_null_proxy<T: ?Sized + Service, P: ImportProxy<T>>() -> P {
+    P::import_proxy(crate::port::null_weak_port(), HandleToExchange::create_null())
+}
