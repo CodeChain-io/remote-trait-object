@@ -283,7 +283,8 @@ pub mod raw_exchange {
     //! [`ServiceRef`]: ../enum.ServiceRef.html
 
     pub use crate::service::export_import::{
-        export_service_into_handle, import_service_from_handle, HandleToExchange, ImportProxy, IntoSkeleton, Skeleton,
+        export_service_into_handle, import_null_proxy, import_service_from_handle, HandleToExchange, ImportProxy,
+        IntoSkeleton, Skeleton,
     };
 }
 
