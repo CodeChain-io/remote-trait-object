@@ -282,6 +282,18 @@ impl<T: ?Sized + Service> ServiceRef<T> {
             _ => panic!("You can import ony imported ServiceRef"),
         }
     }
+
+    /// Converts into the object with whatever smart pointer type you want, for both variants.
+    ///
+    /// If `ServiceRef` is constructed with `Import` (the common case), it is same as `unwrap_import().into_proxy()`.
+    /// If `ServiceRef` is constructed with `Export` (where the `ServiceRef` is given by local object),
+    /// it just create a light-weight object that simply wraps the skeleton, not involving any connections.
+    pub fn into_object<P: ImportProxy<T> + FromSkeleton<T>>(self) -> P {
+        match self {
+            ServiceRef::Import(x) => x.into_proxy(),
+            ServiceRef::Export(x) => P::from_skeleton(x.get_raw_export()),
+        }
+    }
 }
 
 /// This manages thread-local pointer of the port, which will be used in serialization of
