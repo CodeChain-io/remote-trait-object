@@ -71,11 +71,22 @@ impl Skeleton {
     }
 }
 
+impl std::fmt::Debug for Skeleton {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("remote-trait-object skeleton")
+    }
+}
+
 // This belongs to macro_env
 pub fn create_skeleton(raw: Arc<dyn Dispatch>) -> Skeleton {
     Skeleton {
         raw,
     }
+}
+
+// This belongs to macro_env
+pub fn get_dispatch(skeleton: &Skeleton) -> &dyn Dispatch {
+    skeleton.raw.as_ref()
 }
 
 // These traits are associated with some specific service trait.
@@ -104,6 +115,11 @@ pub trait IntoSkeleton<T: ?Sized + Service> {
 // Unused T is for avoiding violation of the orphan rule, like `IntoSkeleton`
 pub trait ImportProxy<T: ?Sized + Service>: Sized {
     fn import_proxy(port: Weak<dyn Port>, handle: HandleToExchange) -> Self;
+}
+
+#[doc(hidden)]
+pub trait FromSkeleton<T: ?Sized + Service>: Sized {
+    fn from_skeleton(skeleton: Skeleton) -> Self;
 }
 
 /// Exports a skeleton and returns a handle to it.

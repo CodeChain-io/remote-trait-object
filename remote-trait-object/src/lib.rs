@@ -291,11 +291,13 @@ pub mod raw_exchange {
 #[doc(hidden)]
 pub mod macro_env {
     pub use super::raw_exchange::*;
+    pub use super::service::export_import::{get_dispatch, FromSkeleton};
     pub use super::*;
     pub use port::Port;
     pub use service::export_import::create_skeleton;
     pub use service::id::{IdMap, MethodIdAtomic, ID_ORDERING, MID_REG};
     pub use service::{Cbor as DefaultSerdeFormat, Dispatch, Handle, MethodId};
+    pub use SerdeFormat;
 }
 
 // Re-export macro

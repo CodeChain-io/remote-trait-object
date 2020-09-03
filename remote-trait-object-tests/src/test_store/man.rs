@@ -168,6 +168,28 @@ mod tests {
 
         store_runner.join().unwrap();
     }
+
+    #[test]
+    fn no_connection() {
+        let pizza_store = super::super::store::create_store();
+        let card = Arc::new(RwLock::new(MyCreditCard {
+            balance: 11,
+        }));
+        let card_to_give = card.clone() as Arc<RwLock<dyn CreditCard>>;
+        assert_eq!(
+            pizza_store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::create_export(card_to_give.clone())),
+            "Here's a delicious veggie pizza"
+        );
+        assert_eq!(
+            pizza_store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::create_export(card_to_give.clone())),
+            "Not enough balance"
+        );
+        card.write().balance += 10;
+        assert_eq!(
+            pizza_store.order_pizza_credit_card(Pizza::Veggie, ServiceRef::create_export(card_to_give)),
+            "Here's a delicious veggie pizza"
+        );
+    }
 }
 
 pub fn massive_no_export(n: usize) {

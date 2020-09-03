@@ -42,7 +42,7 @@ impl Store for MyPizzaStore {
     }
 
     fn order_pizza_credit_card(&self, menu: Pizza, credit_card: ServiceRef<dyn CreditCard>) -> String {
-        let mut credit_card: Box<dyn CreditCard> = credit_card.unwrap_import().into_proxy();
+        let mut credit_card: Box<dyn CreditCard> = credit_card.into_object();
         let (price, name) = self.order_pizza_common(menu);
         let result = credit_card.pay(price + self.vat);
         match result {
@@ -70,4 +70,12 @@ pub fn run_store(transport: (IntraSend, IntraRecv)) {
         }) as Box<dyn Store>),
     );
     rto_context.firm_close(None).unwrap();
+}
+
+#[cfg(test)]
+pub fn create_store() -> Box<dyn Store> {
+    Box::new(MyPizzaStore {
+        vat: 1,
+        registered_card: None,
+    })
 }

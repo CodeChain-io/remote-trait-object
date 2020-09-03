@@ -4,6 +4,7 @@ use syn::punctuated::Punctuated;
 use syn::Token;
 
 pub mod dispatcher;
+pub mod from_skeleton;
 pub mod id;
 pub mod proxy;
 
@@ -106,11 +107,13 @@ pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, 
     let id = id::generate_id(&source_trait, &args)?;
     let dispatcher = dispatcher::generate_dispatcher(&source_trait, &args)?;
     let proxy = proxy::generate_proxy(&source_trait, &args)?;
+    let from_skeleton = from_skeleton::generate_from_skeleton(&source_trait, &args)?;
 
     Ok(quote! {
         #source_trait
         #id
         #dispatcher
         #proxy
+        #from_skeleton
     })
 }
