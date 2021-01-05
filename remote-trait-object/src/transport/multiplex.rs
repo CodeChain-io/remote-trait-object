@@ -81,6 +81,11 @@ impl Multiplexer {
         self.receiver_terminator.take().unwrap().into_inner().terminate();
         self.receiver_thread.take().unwrap().join().unwrap();
     }
+
+    pub fn wait(mut self, _timeout: Option<std::time::Duration>) -> Result<(), Self> {
+        self.receiver_thread.take().unwrap().join().unwrap();
+        Ok(())
+    }
 }
 
 fn receiver_loop<Forwarder: Forward, Receiver: TransportRecv>(
