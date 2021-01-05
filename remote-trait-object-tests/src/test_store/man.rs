@@ -35,7 +35,8 @@ fn test_runner(f: impl Fn(Box<dyn Store>)) {
 
     f(store);
 
-    rto_context.firm_close(None).unwrap();
+    rto_context.disable_garbage_collection();
+    drop(rto_context);
     store_runner.join().unwrap();
 }
 
@@ -141,7 +142,8 @@ mod tests {
         rto_context.disable_garbage_collection();
         // This must not fail
         drop(store);
-        rto_context.firm_close(None).unwrap();
+        rto_context.disable_garbage_collection();
+        drop(rto_context);
         store_runner.join().unwrap();
     }
 
@@ -164,7 +166,8 @@ mod tests {
         assert_eq!(store.order_pizza(Pizza::Pepperoni, &&&&&&&&&&&&&&13), "Here's a delicious pepperoni pizza");
 
         drop(store);
-        rto_context.firm_close(None).unwrap();
+        rto_context.disable_garbage_collection();
+        drop(rto_context);
 
         store_runner.join().unwrap();
     }

@@ -69,7 +69,7 @@ pub fn run_store(transport: (IntraSend, IntraRecv)) {
             registered_card: None,
         }) as Box<dyn Store>),
     );
-    rto_context.firm_close(None).unwrap();
+    rto_context.wait(None).unwrap();
 }
 
 #[cfg(test)]

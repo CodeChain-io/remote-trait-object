@@ -4,7 +4,7 @@ use crate::transport::multiplex::{self, ForwardResult, MultiplexResult, Multiple
 use crate::transport::{TransportRecv, TransportSend};
 use crate::{raw_exchange::*, Service, ServiceToExport, ServiceToImport};
 use parking_lot::Mutex;
-use std::sync::{Arc, Barrier, Weak};
+use std::sync::{Arc, Weak};
 use threadpool::ThreadPool;
 
 mod meta_service {
@@ -13,29 +13,19 @@ mod meta_service {
     use crate as remote_trait_object;
 
     #[remote_trait_object_macro::service]
-    pub trait MetaService: Service {
-        fn firm_close(&self);
-    }
+    pub trait MetaService: Service {}
 
-    pub struct MetaServiceImpl {
-        barrier: Arc<Barrier>,
-    }
+    pub struct MetaServiceImpl {}
 
     impl MetaServiceImpl {
-        pub fn new(barrier: Arc<Barrier>) -> Self {
-            Self {
-                barrier,
-            }
+        pub fn new() -> Self {
+            Self {}
         }
     }
 
     impl Service for MetaServiceImpl {}
 
-    impl MetaService for MetaServiceImpl {
-        fn firm_close(&self) {
-            self.barrier.wait();
-        }
-    }
+    impl MetaService for MetaServiceImpl {}
 }
 use meta_service::{MetaService, MetaServiceImpl};
 
@@ -110,7 +100,7 @@ pub struct Context {
     server: Option<Server>,
     port: Option<Arc<BasicPort>>,
     meta_service: Option<Box<dyn MetaService>>,
-    firm_close_barrier: Arc<Barrier>,
+    cleaned: bool,
 }
 
 impl std::fmt::Debug for Context {
@@ -193,8 +183,6 @@ impl Context {
         transport_recv: R,
         initial_service: ServiceToExport<A>,
     ) -> (Self, ServiceToImport<B>) {
-        let firm_close_barrier = Arc::new(Barrier::new(2));
-
         let MultiplexResult {
             multiplexer,
             request_recv,
@@ -206,7 +194,7 @@ impl Context {
         let port = BasicPort::new(
             config.clone(),
             client,
-            (Box::new(MetaServiceImpl::new(Arc::clone(&firm_close_barrier))) as Box<dyn MetaService>).into_skeleton(),
+            (Box::new(MetaServiceImpl::new()) as Box<dyn MetaService>).into_skeleton(),
             initial_service.get_raw_export(),
         );
         let server = Server::new(config.clone(), port.get_registry(), transport_send, Box::new(request_recv));
@@ -224,7 +212,7 @@ impl Context {
             server: Some(server),
             port: Some(port),
             meta_service: Some(meta_service),
-            firm_close_barrier,
+            cleaned: false,
         };
         let initial_service = ServiceToImport::from_raw_import(initial_handle, port_weak);
         (ctx, initial_service)
@@ -258,22 +246,25 @@ impl Context {
         self.port.as_ref().expect("It becomes None only when the context is dropped.").set_no_drop();
     }
 
-    /// Closes a context with a firm synchronization with the other end.
+    /// Waits until the transport is closed.
     ///
-    /// If you call this method, it will block until the other end calls `firm_close()` too.
-    /// This is useful when you want to assure that two ends never suffer from 'other end has been closed' error.
-    /// If one of the contexts dropped too early, all remote calls (including delete request) from the other end will fail.
-    /// To avoid such a situation, consider using this to stay alive as long as it is required.
+    /// Technically, this method will block until `TransportRecv` returns an error.
+    /// Use this if you have nothing to do while the connection is working well.
     ///
-    /// FIXME: currently it doesn't use `timeout` and blocks indefinitely.
-    pub fn firm_close(self, _timeout: Option<std::time::Duration>) -> Result<(), Self> {
-        let barrier = Arc::clone(&self.firm_close_barrier);
-        let t = std::thread::spawn(move || {
-            barrier.wait();
-        });
-        self.meta_service.as_ref().unwrap().firm_close();
-        t.join().unwrap();
+    /// TODO: We should actually consider `timeout`
+    pub fn wait(mut self, timeout: Option<std::time::Duration>) -> Result<(), Self> {
+        if let Err(multiplexer) =
+            self.multiplexer.take().expect("It becomes None only when the context is dropped.").wait(timeout)
+        {
+            self.multiplexer.replace(multiplexer);
+            return Err(self)
+        }
 
+        self.port.as_ref().unwrap().set_no_drop();
+        self.port.as_ref().unwrap().clear_registry();
+        drop(self.meta_service.take().unwrap());
+
+        self.cleaned = true;
         Ok(())
     }
 }
@@ -281,13 +272,15 @@ impl Context {
 impl Drop for Context {
     /// This will delete all service objects after calling `disable_garbage_collection()` internally.
     fn drop(&mut self) {
-        // We have to clean all registered service, as some might hold another proxy object inside, which refers this context's port.
-        // For such case, we have to make them be dropped first before we unwrap the Arc<BasicPort>
-        self.port.as_ref().unwrap().set_no_drop();
-        self.port.as_ref().unwrap().clear_registry();
-        drop(self.meta_service.take().unwrap());
+        if !self.cleaned {
+            self.multiplexer.take().expect("It becomes None only when the context is dropped.").shutdown();
+            // We have to clean all registered service, as some might hold another proxy object inside, which refers this context's port.
+            // For such case, we have to make them be dropped first before we unwrap the Arc<BasicPort>
+            self.port.as_ref().unwrap().set_no_drop();
+            self.port.as_ref().unwrap().clear_registry();
+            drop(self.meta_service.take().unwrap());
+        }
 
-        self.multiplexer.take().expect("It becomes None only when the context is dropped.").shutdown();
         // Shutdown server after multiplexer
         self.server.take().expect("It becomes None only when the context is dropped.").shutdown();
         // Shutdown port after multiplexer
