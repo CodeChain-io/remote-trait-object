@@ -57,7 +57,9 @@ pub trait Service: Send + Sync {}
 
 /// A serde de/serialization format that will be used for a service.
 pub trait SerdeFormat {
+    #[allow(clippy::result_unit_err)]
     fn to_vec<S: serde::Serialize>(s: &S) -> Result<Vec<u8>, ()>;
+    #[allow(clippy::result_unit_err)]
     fn from_slice<D: serde::de::DeserializeOwned>(data: &[u8]) -> Result<D, ()>;
 }
 

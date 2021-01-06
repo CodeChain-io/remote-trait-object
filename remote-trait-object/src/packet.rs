@@ -182,7 +182,7 @@ impl Packet {
     }
 
     pub fn new_request(service_object_id: ServiceObjectId, method: MethodId, args: &[u8]) -> Self {
-        let mut buffer = vec![0 as u8; PacketHeader::len() + args.len()];
+        let mut buffer = vec![0_u8; PacketHeader::len() + args.len()];
         let header = PacketHeader::new(SlotId::new_request(), service_object_id, method);
         header.write(&mut buffer);
         buffer[PacketHeader::len()..].copy_from_slice(args);

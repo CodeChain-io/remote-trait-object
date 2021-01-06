@@ -145,6 +145,7 @@ impl<T: ?Sized + Service> ServiceToImport<T> {
     /// See [Service Compatiblity] section for more.
     ///
     /// [Service compatiblity]: ./index.html#service_compatibility
+    #[allow(clippy::result_unit_err)]
     pub fn cast_service<U: ?Sized + Service>(self) -> Result<ServiceToImport<U>, ()> {
         // TODO: Check the compatibility between traits using IDL
         Ok(ServiceToImport {
