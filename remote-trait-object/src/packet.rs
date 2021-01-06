@@ -10,7 +10,12 @@ pub struct SlotId(u32);
 
 impl fmt::Display for SlotId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SlotId {{ id: {:?}, type: {:?} }}", self.0, self.get_type())
+        write!(
+            f,
+            "SlotId {{ id: {:?}, type: {:?} }}",
+            self.0,
+            self.get_type()
+        )
     }
 }
 
@@ -107,15 +112,19 @@ pub struct PacketView<'a> {
 
 impl<'a> fmt::Display for PacketView<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Packet {{ slot: {}, object id: {}, method: {} }}", self.slot(), self.object_id(), self.method())
+        write!(
+            f,
+            "Packet {{ slot: {}, object id: {}, method: {} }}",
+            self.slot(),
+            self.object_id(),
+            self.method()
+        )
     }
 }
 
 impl<'a> PacketView<'a> {
     pub fn new(buffer: &'a [u8]) -> Self {
-        Self {
-            buffer,
-        }
+        Self { buffer }
     }
 
     pub fn header(&self) -> &'a [u8] {
@@ -163,16 +172,12 @@ impl fmt::Display for Packet {
 
 impl Packet {
     pub fn new_from_buffer(buffer: Vec<u8>) -> Self {
-        Self {
-            buffer,
-        }
+        Self { buffer }
     }
 
     pub fn new_response_from_request(request: PacketView) -> Self {
         let buffer = request.header().to_vec();
-        let mut packet = Self {
-            buffer,
-        };
+        let mut packet = Self { buffer };
 
         let mut header = packet.header();
         header.slot.change_to_response();
@@ -186,9 +191,7 @@ impl Packet {
         let header = PacketHeader::new(SlotId::new_request(), service_object_id, method);
         header.write(&mut buffer);
         buffer[PacketHeader::len()..].copy_from_slice(args);
-        Self {
-            buffer,
-        }
+        Self { buffer }
     }
 
     pub fn buffer(&self) -> &[u8] {

@@ -79,9 +79,7 @@ impl std::fmt::Debug for Skeleton {
 
 // This belongs to macro_env
 pub fn create_skeleton(raw: Arc<dyn Dispatch>) -> Skeleton {
-    Skeleton {
-        raw,
-    }
+    Skeleton { raw }
 }
 
 // This belongs to macro_env
@@ -127,8 +125,15 @@ pub trait FromSkeleton<T: ?Sized + Service>: Sized {
 /// Once you create an instance of skeleton, you will eventually export it calling this.
 /// Take the handle to the other side's context and call [`import_service_from_handle`] to import it into a proxy object.
 /// If not, the service object will remain in the Context forever doing nothing.
-pub fn export_service_into_handle(context: &crate::context::Context, service: Skeleton) -> HandleToExchange {
-    context.get_port().upgrade().unwrap().register_service(service.raw)
+pub fn export_service_into_handle(
+    context: &crate::context::Context,
+    service: Skeleton,
+) -> HandleToExchange {
+    context
+        .get_port()
+        .upgrade()
+        .unwrap()
+        .register_service(service.raw)
 }
 
 /// Imports a handle into a proxy object.
@@ -150,5 +155,8 @@ pub fn import_service_from_handle<T: ?Sized + Service, P: ImportProxy<T>>(
 /// [`import_service_from_handle()`]: ./fn.import_service_from_handle.html
 /// [`Context`]: ../struct.Context.html
 pub fn import_null_proxy<T: ?Sized + Service, P: ImportProxy<T>>() -> P {
-    P::import_proxy(crate::port::null_weak_port(), HandleToExchange::create_null())
+    P::import_proxy(
+        crate::port::null_weak_port(),
+        HandleToExchange::create_null(),
+    )
 }

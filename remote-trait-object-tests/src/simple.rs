@@ -55,13 +55,16 @@ fn test() {
         Context::with_initial_service_import(Config::default_setup(), send2, recv2);
     let pizza_store_proxy: Box<dyn PizzaStore> = pizza_store.into_proxy();
 
-    let my_credit_card = Box::new(SomeCreditCard {
-        money: 11,
-    }) as Box<dyn CreditCard>;
-    assert_eq!(pizza_store_proxy.order_pizza(ServiceRef::create_export(my_credit_card)).unwrap(), "Tasty Pizza");
+    let my_credit_card = Box::new(SomeCreditCard { money: 11 }) as Box<dyn CreditCard>;
+    assert_eq!(
+        pizza_store_proxy
+            .order_pizza(ServiceRef::create_export(my_credit_card))
+            .unwrap(),
+        "Tasty Pizza"
+    );
 
-    let my_credit_card = Box::new(SomeCreditCard {
-        money: 9,
-    }) as Box<dyn CreditCard>;
-    assert!(pizza_store_proxy.order_pizza(ServiceRef::create_export(my_credit_card)).is_err());
+    let my_credit_card = Box::new(SomeCreditCard { money: 9 }) as Box<dyn CreditCard>;
+    assert!(pizza_store_proxy
+        .order_pizza(ServiceRef::create_export(my_credit_card))
+        .is_err());
 }

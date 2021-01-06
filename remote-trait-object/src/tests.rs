@@ -107,7 +107,10 @@ impl Service1 for MyObject {
         if let Some(x) = a2.as_ref() {
             (format!("{}_{}_{}", s1, x, self.mul), "Bye".to_owned())
         } else {
-            (format!("{}_{}_{}", s1, "None", self.mul), "ByeBye".to_owned())
+            (
+                format!("{}_{}_{}", s1, "None", self.mul),
+                "ByeBye".to_owned(),
+            )
         }
     }
 }
@@ -117,15 +120,22 @@ fn macro1() {
     let port = Arc::new(TestPort::new());
     let port_weak = Arc::downgrade(&port);
 
-    let object = Box::new(MyObject {
-        mul: 4,
-    }) as Box<dyn Service1>;
+    let object = Box::new(MyObject { mul: 4 }) as Box<dyn Service1>;
     let handle = port.register_service(object.into_skeleton().raw);
     let proxy = <Box<dyn Service1> as ImportProxy<dyn Service1>>::import_proxy(port_weak, handle);
 
-    assert_eq!(proxy.f1(1, &2, &[3, 4], (5, 6), &(7, "8".to_owned())), (1 + 2 + 3 + 4 + 5 + 6 + 7 + 8) * 4);
-    assert_eq!(proxy.f2("Hello", &Some(123)), ("Hello_123_4".to_owned(), "Bye".to_owned()));
-    assert_eq!(proxy.f2("Hello", &None), ("Hello_None_4".to_owned(), "ByeBye".to_owned()));
+    assert_eq!(
+        proxy.f1(1, &2, &[3, 4], (5, 6), &(7, "8".to_owned())),
+        (1 + 2 + 3 + 4 + 5 + 6 + 7 + 8) * 4
+    );
+    assert_eq!(
+        proxy.f2("Hello", &Some(123)),
+        ("Hello_123_4".to_owned(), "Bye".to_owned())
+    );
+    assert_eq!(
+        proxy.f2("Hello", &None),
+        ("Hello_None_4".to_owned(), "ByeBye".to_owned())
+    );
     drop(proxy);
     assert_eq!(port.register_len(), 0);
 }
@@ -158,7 +168,8 @@ fn macro_no_skeleton() {
     let object = Box::new(SimpleHello) as Box<dyn Hello>;
 
     let handle = port.register_service(object.into_skeleton().raw);
-    let proxy = <Box<dyn HelloWithRef> as ImportProxy<dyn HelloWithRef>>::import_proxy(port_weak, handle);
+    let proxy =
+        <Box<dyn HelloWithRef> as ImportProxy<dyn HelloWithRef>>::import_proxy(port_weak, handle);
 
     let source = vec![1, 2, 3, 4];
     let source2 = vec![(&source[0], &source[1]), (&source[2], &source[3])];

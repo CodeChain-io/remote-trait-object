@@ -26,15 +26,11 @@ struct SimpleA {
 
 impl SimpleA {
     pub fn new() -> Self {
-        Self {
-            recursion_count: 0,
-        }
+        Self { recursion_count: 0 }
     }
 
     pub fn with_recursion_count(recursion_count: u32) -> Self {
-        Self {
-            recursion_count,
-        }
+        Self { recursion_count }
     }
 }
 
@@ -104,7 +100,10 @@ fn service_object_as_return() {
     let port = Arc::new(TestPort::new());
     let proxy_a = create_proxy_a(port.clone());
 
-    let proxy_b: Box<dyn B> = proxy_a.service_object_as_return().unwrap_import().into_proxy();
+    let proxy_b: Box<dyn B> = proxy_a
+        .service_object_as_return()
+        .unwrap_import()
+        .into_proxy();
     assert_eq!(proxy_b.get(), 0);
     proxy_b.inc();
     assert_eq!(proxy_b.get(), 1);
@@ -141,12 +140,18 @@ fn recursive_service_object() {
 
     for i in 0..10 {
         assert_eq!(proxy_a.get_recursion_count(), i);
-        proxy_a = proxy_a.recursive_service_object().unwrap_import().into_proxy();
+        proxy_a = proxy_a
+            .recursive_service_object()
+            .unwrap_import()
+            .into_proxy();
         proxy_as.push(Arc::clone(&proxy_a));
     }
     assert_eq!(proxy_a.get_recursion_count(), 10);
 
-    let proxy_b: Box<dyn B> = proxy_a.service_object_as_return().unwrap_import().into_proxy();
+    let proxy_b: Box<dyn B> = proxy_a
+        .service_object_as_return()
+        .unwrap_import()
+        .into_proxy();
     proxy_b.inc();
     assert_eq!(proxy_b.get(), 1);
 

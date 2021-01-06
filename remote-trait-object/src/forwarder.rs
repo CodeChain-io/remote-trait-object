@@ -22,15 +22,22 @@ pub struct ServiceForwarder {
 
 impl fmt::Debug for ServiceForwarder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.service_objects.read().keys()).finish()
+        f.debug_list()
+            .entries(self.service_objects.read().keys())
+            .finish()
     }
 }
 
 impl ServiceForwarder {
     pub fn new(config: Config, meta_service: Skeleton, service_object: Skeleton) -> Self {
-        let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> = Default::default();
-        service_objects.write().insert(META_SERVICE_OBJECT_ID, meta_service.raw);
-        service_objects.write().insert(INITIAL_SERVICE_OBJECT_ID, service_object.raw);
+        let service_objects: RwLock<HashMap<ServiceObjectId, Arc<dyn Dispatch>>> =
+            Default::default();
+        service_objects
+            .write()
+            .insert(META_SERVICE_OBJECT_ID, meta_service.raw);
+        service_objects
+            .write()
+            .insert(INITIAL_SERVICE_OBJECT_ID, service_object.raw);
         let mut available_ids = VecDeque::new();
         for i in 0u32..(config.maximum_services_num as u32) {
             if i != META_SERVICE_OBJECT_ID && i != INITIAL_SERVICE_OBJECT_ID {
@@ -46,8 +53,16 @@ impl ServiceForwarder {
     }
 
     pub fn register_service_object(&self, service_object: Arc<dyn Dispatch>) -> ServiceObjectId {
-        let id = self.available_ids.write().pop_front().expect("Too many service objects had been created");
-        assert!(self.service_objects.write().insert(id, service_object).is_none());
+        let id = self
+            .available_ids
+            .write()
+            .pop_front()
+            .expect("Too many service objects had been created");
+        assert!(self
+            .service_objects
+            .write()
+            .insert(id, service_object)
+            .is_none());
         id
     }
 

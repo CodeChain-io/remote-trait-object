@@ -163,7 +163,9 @@ impl<T: ?Sized + Service> ServiceToImport<T> {
     /// See [Service Compatiblity] section for more.
     ///
     /// [Service compatiblity]: ./index.html#service_compatibility
-    pub fn cast_service_without_compatibility_check<U: ?Sized + Service>(self) -> ServiceToImport<U> {
+    pub fn cast_service_without_compatibility_check<U: ?Sized + Service>(
+        self,
+    ) -> ServiceToImport<U> {
         ServiceToImport {
             handle: self.handle,
             port: self.port,
@@ -334,12 +336,19 @@ pub(crate) mod port_thread_local {
 impl<T: ?Sized + Service> Serialize for ServiceToExport<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer, {
+        S: Serializer,
+    {
         let error = "You must not de/serialize ServiceRef by yourself. If you not, this is a bug.";
         let (handle, have_to_replace) = match &*self.service.borrow() {
             ExportEntry::ReadyToExport(service) => {
                 debug_assert_eq!(Arc::strong_count(&service.raw), 1);
-                (port_thread_local::get_port().upgrade().expect(error).register_service(Arc::clone(&service.raw)), true)
+                (
+                    port_thread_local::get_port()
+                        .upgrade()
+                        .expect(error)
+                        .register_service(Arc::clone(&service.raw)),
+                    true,
+                )
             }
             ExportEntry::Exported(handle) => (*handle, false),
         };
@@ -353,7 +362,8 @@ impl<T: ?Sized + Service> Serialize for ServiceToExport<T> {
 impl<'de, T: ?Sized + Service> Deserialize<'de> for ServiceToImport<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>, {
+        D: Deserializer<'de>,
+    {
         let handle = HandleToExchange::deserialize(deserializer)?;
         Ok(ServiceToImport {
             handle,
@@ -366,7 +376,8 @@ impl<'de, T: ?Sized + Service> Deserialize<'de> for ServiceToImport<T> {
 impl<T: ?Sized + Service> Serialize for ServiceRef<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer, {
+        S: Serializer,
+    {
         match self {
             ServiceRef::Export(x) => x.serialize(serializer),
             ServiceRef::Import(_) => panic!(
@@ -379,8 +390,11 @@ impl<T: ?Sized + Service> Serialize for ServiceRef<T> {
 impl<'de, T: ?Sized + Service> Deserialize<'de> for ServiceRef<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>, {
-        Ok(ServiceRef::Import(ServiceToImport::deserialize(deserializer)?))
+        D: Deserializer<'de>,
+    {
+        Ok(ServiceRef::Import(ServiceToImport::deserialize(
+            deserializer,
+        )?))
     }
 }
 
@@ -504,15 +518,31 @@ mod tests {
             {
                 let handle_to_exchange = HandleToExchange(32);
                 let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
-                let dyn_foo: ServiceRef<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
-                assert_eq!(dyn_foo.unwrap_import().into_proxy::<Box<dyn Foo>>().get_handle_to_exchange().0, 32);
+                let dyn_foo: ServiceRef<dyn Foo> =
+                    serde_cbor::from_slice(&serialized_handle).unwrap();
+                assert_eq!(
+                    dyn_foo
+                        .unwrap_import()
+                        .into_proxy::<Box<dyn Foo>>()
+                        .get_handle_to_exchange()
+                        .0,
+                    32
+                );
             }
 
             {
                 let handle_to_exchange = HandleToExchange(2);
                 let serialized_handle = serde_cbor::to_vec(&handle_to_exchange).unwrap();
-                let dyn_foo: ServiceRef<dyn Foo> = serde_cbor::from_slice(&serialized_handle).unwrap();
-                assert_eq!(dyn_foo.unwrap_import().into_proxy::<Box<dyn Foo>>().get_handle_to_exchange().0, 2);
+                let dyn_foo: ServiceRef<dyn Foo> =
+                    serde_cbor::from_slice(&serialized_handle).unwrap();
+                assert_eq!(
+                    dyn_foo
+                        .unwrap_import()
+                        .into_proxy::<Box<dyn Foo>>()
+                        .get_handle_to_exchange()
+                        .0,
+                    2
+                );
             }
         }
     }

@@ -45,10 +45,16 @@ impl Port for BasicPort {
 
     fn delete_request(&self, id: ServiceObjectId) {
         if self.no_drop.load(Ordering::SeqCst) {
-            return
+            return;
         }
         let packet = Packet::new_request(id, DELETE_REQUEST, &[]);
-        assert!(self.client.as_ref().unwrap().call(packet.view()).data().is_empty());
+        assert!(self
+            .client
+            .as_ref()
+            .unwrap()
+            .call(packet.view())
+            .data()
+            .is_empty());
     }
 
     fn register_service(&self, service_object: Arc<dyn Dispatch>) -> HandleToExchange {
@@ -57,7 +63,12 @@ impl Port for BasicPort {
 }
 
 impl BasicPort {
-    pub fn new(config: Config, client: Client, meta_sevice: Skeleton, initial_service: Skeleton) -> Arc<Self> {
+    pub fn new(
+        config: Config,
+        client: Client,
+        meta_sevice: Skeleton,
+        initial_service: Skeleton,
+    ) -> Arc<Self> {
         let arc = Arc::new(Self {
             registry: Arc::new(ServiceForwarder::new(config, meta_sevice, initial_service)),
             client: Some(client),

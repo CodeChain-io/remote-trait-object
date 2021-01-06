@@ -22,13 +22,16 @@ impl Server {
         transport_recv: Box<dyn TransportRecv>,
     ) -> Self
     where
-        H: Handler + Send + 'static, {
+        H: Handler + Send + 'static,
+    {
         let (joined_event_sender, joined_event_receiver) = channel::bounded(1);
         let receiver_thread = thread::Builder::new()
             .name(format!("[{}] port server receiver", config.name))
             .spawn(move || {
                 receiver(config, handler, transport_send, transport_recv);
-                joined_event_sender.send(()).expect("Server will be dropped after thread is joined");
+                joined_event_sender
+                    .send(())
+                    .expect("Server will be dropped after thread is joined");
             })
             .unwrap();
 
@@ -39,7 +42,10 @@ impl Server {
     }
 
     pub fn shutdown(mut self) {
-        match self.joined_event_receiver.recv_timeout(time::Duration::from_millis(500)) {
+        match self
+            .joined_event_receiver
+            .recv_timeout(time::Duration::from_millis(500))
+        {
             Err(Timeout) => {
                 panic!(
                     "There may be a deadlock or misuse of Server. Call Server::shutdown when transport_recv is closed"
@@ -73,7 +79,7 @@ fn handle_single_call<H: Handler>(
     if let Err(_err) = transport_send.send(response_packet.buffer(), None) {
         // TODO: report the error to the context
         count.fetch_sub(1, Ordering::Release);
-        return
+        return;
     };
     count.fetch_sub(1, Ordering::Release);
 }
@@ -84,7 +90,8 @@ fn receiver<H>(
     transport_send: Arc<dyn TransportSend>,
     transport_recv: Box<dyn TransportRecv>,
 ) where
-    H: Handler + 'static, {
+    H: Handler + 'static,
+{
     let count = Arc::new(AtomicI32::new(0));
     loop {
         match transport_recv.recv(None) {
@@ -95,12 +102,15 @@ fn receiver<H>(
 
                 count.fetch_add(1, Ordering::Release);
                 let count = Arc::clone(&count);
-                config.thread_pool.lock().execute(move || handle_single_call(packet, handler, transport_send, count));
+                config
+                    .thread_pool
+                    .lock()
+                    .execute(move || handle_single_call(packet, handler, transport_send, count));
             }
             Err(TransportError::Termination) => break,
             Err(_err) => {
                 // TODO: report this error to the context
-                break
+                break;
             }
         }
     }

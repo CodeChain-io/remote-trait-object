@@ -37,7 +37,8 @@ pub enum TransportError {
 /// [`Context`]: ../struct.Context.html
 pub trait TransportSend: Sync + Send + std::fmt::Debug {
     /// Sends a packet with an optional timeout.
-    fn send(&self, data: &[u8], timeout: Option<std::time::Duration>) -> Result<(), TransportError>;
+    fn send(&self, data: &[u8], timeout: Option<std::time::Duration>)
+        -> Result<(), TransportError>;
 
     /// Creates a terminate switch that can be sent to another thread
     fn create_terminator(&self) -> Box<dyn Terminate>;

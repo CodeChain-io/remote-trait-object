@@ -76,7 +76,8 @@ pub fn setup_identifiers(descriptor: &IdMap) {
     if let Some(map) = descriptor.method_map.as_ref() {
         for (trait_name, method_name, setter) in MID_REG {
             setter(
-                *map.get(&((*trait_name).to_owned(), (*method_name).to_owned())).expect("Invalid handle descriptor"),
+                *map.get(&((*trait_name).to_owned(), (*method_name).to_owned()))
+                    .expect("Invalid handle descriptor"),
             );
         }
     }

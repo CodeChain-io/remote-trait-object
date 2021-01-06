@@ -55,7 +55,7 @@ impl MacroArgsRaw {
                 }
             } else {
                 Err(syn::parse::Error::new_spanned(ts, "Unsupported argument"))
-            }
+            };
         }
 
         let arg: SingleArg<TokenStream2> = syn::parse2(ts.clone())?;
@@ -73,9 +73,9 @@ impl MacroArgsRaw {
 
     fn fill_default_values(self) -> MacroArgs {
         MacroArgs {
-            serde_format: self
-                .serde_format
-                .unwrap_or_else(|| syn::parse2(quote! {remote_trait_object::macro_env::DefaultSerdeFormat}).unwrap()),
+            serde_format: self.serde_format.unwrap_or_else(|| {
+                syn::parse2(quote! {remote_trait_object::macro_env::DefaultSerdeFormat}).unwrap()
+            }),
             no_proxy: self.no_proxy.map(|_| true).unwrap_or(false),
             no_skeleton: self.no_skeleton.map(|_| true).unwrap_or(false),
         }
@@ -100,7 +100,10 @@ pub fn service(args: TokenStream2, input: TokenStream2) -> Result<TokenStream2, 
     let source_trait = match syn::parse2::<syn::ItemTrait>(input.clone()) {
         Ok(x) => x,
         Err(_) => {
-            return Err(syn::Error::new_spanned(input, "You can use #[service] only on a trait").to_compile_error())
+            return Err(
+                syn::Error::new_spanned(input, "You can use #[service] only on a trait")
+                    .to_compile_error(),
+            )
         }
     };
 

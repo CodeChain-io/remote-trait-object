@@ -45,7 +45,12 @@ impl Ping for SimplePing {
 }
 
 #[allow(clippy::type_complexity)]
-fn run(barrier: Arc<Barrier>) -> ((Context, ServiceToImport<dyn Hello>), (Context, ServiceToImport<dyn Hello>)) {
+fn run(
+    barrier: Arc<Barrier>,
+) -> (
+    (Context, ServiceToImport<dyn Hello>),
+    (Context, ServiceToImport<dyn Hello>),
+) {
     let crate::transport::TransportEnds {
         recv1,
         send1,
@@ -65,9 +70,7 @@ fn run(barrier: Arc<Barrier>) -> ((Context, ServiceToImport<dyn Hello>), (Contex
             Config::default_setup(),
             send2,
             recv2,
-            ServiceToExport::new(Box::new(SimpleHello {
-                barrier,
-            }) as Box<dyn Hello>),
+            ServiceToExport::new(Box::new(SimpleHello { barrier }) as Box<dyn Hello>),
         ),
     )
 }
@@ -98,7 +101,9 @@ fn ping_concurrent1() {
         let hello1: Box<dyn Hello> = hello1.into_proxy();
         let hello2: Box<dyn Hello> = hello2.into_proxy();
 
-        let pings: Vec<Box<dyn Ping>> = (0..n).map(|_| hello2.hey().unwrap_import().into_proxy()).collect();
+        let pings: Vec<Box<dyn Ping>> = (0..n)
+            .map(|_| hello2.hey().unwrap_import().into_proxy())
+            .collect();
         let joins: Vec<thread::JoinHandle<()>> = pings
             .into_iter()
             .map(|ping| {
@@ -152,7 +157,8 @@ fn null_proxy() {
     let barrier = Arc::new(Barrier::new(1));
     let ((ctx1, _), (_ctx2, _)) = run(Arc::clone(&barrier));
     let null_handle = remote_trait_object::raw_exchange::HandleToExchange::create_null();
-    let null_proxy: Box<dyn Ping> = remote_trait_object::raw_exchange::import_service_from_handle(&ctx1, null_handle);
+    let null_proxy: Box<dyn Ping> =
+        remote_trait_object::raw_exchange::import_service_from_handle(&ctx1, null_handle);
     null_proxy.ping();
 }
 

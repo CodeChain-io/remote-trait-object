@@ -5,12 +5,20 @@ use remote_trait_object::transport::*;
 pub struct IntraSend(Sender<Vec<u8>>);
 
 impl TransportSend for IntraSend {
-    fn send(&self, data: &[u8], timeout: Option<std::time::Duration>) -> Result<(), TransportError> {
+    fn send(
+        &self,
+        data: &[u8],
+        timeout: Option<std::time::Duration>,
+    ) -> Result<(), TransportError> {
         if let Some(timeout) = timeout {
             // FIXME: Discern timeout error
-            self.0.send_timeout(data.to_vec(), timeout).map_err(|_| TransportError::Custom)
+            self.0
+                .send_timeout(data.to_vec(), timeout)
+                .map_err(|_| TransportError::Custom)
         } else {
-            self.0.send(data.to_vec()).map_err(|_| TransportError::Custom)
+            self.0
+                .send(data.to_vec())
+                .map_err(|_| TransportError::Custom)
         }
     }
 
@@ -55,14 +63,14 @@ impl TransportRecv for IntraRecv {
                 Ok(data) => data,
                 Err(_) => {
                     debug!("Counterparty connection is closed in Intra");
-                    return Err(TransportError::Custom)
+                    return Err(TransportError::Custom);
                 }
             },
             i if i == terminator_index => {
                 let _ = selected_op
                     .recv(&self.terminator_receiver)
                     .expect("Terminator should be dropped after this thread");
-                return Err(TransportError::Termination)
+                return Err(TransportError::Termination);
             }
             _ => unreachable!(),
         };
