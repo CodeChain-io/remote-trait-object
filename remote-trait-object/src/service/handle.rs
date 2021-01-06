@@ -30,7 +30,10 @@ impl Handle {
         method: MethodId,
         args: &S,
     ) -> D {
-        assert_ne!(self.id, NULL_ID, "You invoked a method of a null proxy object.");
+        assert_ne!(
+            self.id, NULL_ID,
+            "You invoked a method of a null proxy object."
+        );
 
         super::serde_support::port_thread_local::set_port(self.port.clone());
         let args = F::to_vec(args).unwrap();

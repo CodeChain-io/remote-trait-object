@@ -62,9 +62,13 @@ impl crate::macro_env::Dispatch for NullServiceRwLockDispatcher {
         panic!("Invalid remote-trait-object call. Fatal Error.")
     }
 }
-impl crate::macro_env::IntoSkeleton<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
+impl crate::macro_env::IntoSkeleton<dyn NullService>
+    for std::sync::Arc<parking_lot::RwLock<dyn NullService>>
+{
     fn into_skeleton(self) -> crate::macro_env::Skeleton {
-        crate::macro_env::create_skeleton(std::sync::Arc::new(NullServiceRwLockDispatcher::new(self)))
+        crate::macro_env::create_skeleton(std::sync::Arc::new(NullServiceRwLockDispatcher::new(
+            self,
+        )))
     }
 }
 #[derive(Debug)]
@@ -93,7 +97,9 @@ impl crate::macro_env::ImportProxy<dyn NullService> for std::sync::Arc<dyn NullS
         })
     }
 }
-impl crate::macro_env::ImportProxy<dyn NullService> for std::sync::Arc<parking_lot::RwLock<dyn NullService>> {
+impl crate::macro_env::ImportProxy<dyn NullService>
+    for std::sync::Arc<parking_lot::RwLock<dyn NullService>>
+{
     fn import_proxy(
         port: std::sync::Weak<dyn crate::macro_env::Port>,
         handle: crate::macro_env::HandleToExchange,

@@ -105,7 +105,9 @@ pub struct Context {
 
 impl std::fmt::Debug for Context {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Context").field("config", &self.config).finish()
+        f.debug_struct("Context")
+            .field("config", &self.config)
+            .finish()
     }
 }
 
@@ -125,7 +127,12 @@ impl Context {
     ) -> Self {
         let null_to_export = crate::service::create_null_service();
         let (ctx, _null_to_import): (Self, ServiceToImport<dyn crate::service::NullService>) =
-            Self::with_initial_service(config, transport_send, transport_recv, ServiceToExport::new(null_to_export));
+            Self::with_initial_service(
+                config,
+                transport_send,
+                transport_recv,
+                ServiceToExport::new(null_to_export),
+            );
         ctx
     }
 
@@ -135,7 +142,11 @@ impl Context {
     /// Please see [`with_initial_service()`] for a general explanation of creation of `Context`.
     ///
     /// [`with_initial_service()`]: ./struct.Context.html#method.with_initial_service
-    pub fn with_initial_service_export<S: TransportSend + 'static, R: TransportRecv + 'static, A: ?Sized + Service>(
+    pub fn with_initial_service_export<
+        S: TransportSend + 'static,
+        R: TransportRecv + 'static,
+        A: ?Sized + Service,
+    >(
         config: Config,
         transport_send: S,
         transport_recv: R,
@@ -152,14 +163,22 @@ impl Context {
     /// Please see [`with_initial_service()`] for a general explanation of creation of `Context`.
     ///
     /// [`with_initial_service()`]: ./struct.Context.html#method.with_initial_service
-    pub fn with_initial_service_import<S: TransportSend + 'static, R: TransportRecv + 'static, B: ?Sized + Service>(
+    pub fn with_initial_service_import<
+        S: TransportSend + 'static,
+        R: TransportRecv + 'static,
+        B: ?Sized + Service,
+    >(
         config: Config,
         transport_send: S,
         transport_recv: R,
     ) -> (Self, ServiceToImport<B>) {
         let null_to_export = crate::service::create_null_service();
-        let (ctx, import) =
-            Self::with_initial_service(config, transport_send, transport_recv, ServiceToExport::new(null_to_export));
+        let (ctx, import) = Self::with_initial_service(
+            config,
+            transport_send,
+            transport_recv,
+            ServiceToExport::new(null_to_export),
+        );
         (ctx, import)
     }
 
@@ -190,14 +209,23 @@ impl Context {
         } = Multiplexer::multiplex::<R, PacketForward>(config.clone(), transport_recv);
         let transport_send = Arc::new(transport_send) as Arc<dyn TransportSend>;
 
-        let client = Client::new(config.clone(), Arc::clone(&transport_send), Box::new(response_recv));
+        let client = Client::new(
+            config.clone(),
+            Arc::clone(&transport_send),
+            Box::new(response_recv),
+        );
         let port = BasicPort::new(
             config.clone(),
             client,
             (Box::new(MetaServiceImpl::new()) as Box<dyn MetaService>).into_skeleton(),
             initial_service.get_raw_export(),
         );
-        let server = Server::new(config.clone(), port.get_registry(), transport_send, Box::new(request_recv));
+        let server = Server::new(
+            config.clone(),
+            port.get_registry(),
+            transport_send,
+            Box::new(request_recv),
+        );
 
         let port_weak = Arc::downgrade(&port) as Weak<dyn Port>;
         let meta_service = <Box<dyn MetaService> as ImportProxy<dyn MetaService>>::import_proxy(
@@ -219,7 +247,12 @@ impl Context {
     }
 
     pub(crate) fn get_port(&self) -> Weak<dyn Port> {
-        Arc::downgrade(&self.port.clone().expect("It becomes None only when the context is dropped.")) as Weak<dyn Port>
+        Arc::downgrade(
+            &self
+                .port
+                .clone()
+                .expect("It becomes None only when the context is dropped."),
+        ) as Weak<dyn Port>
     }
 
     /// Clears all service objects in its registry.
@@ -243,7 +276,10 @@ impl Context {
     /// If you call this, all `drop()` of proxy objects imported from this context won't send a delete request anymore.
     /// This is useful when you're not sure if the connection is still alive, but you have to close your side's context anyway.
     pub fn disable_garbage_collection(&self) {
-        self.port.as_ref().expect("It becomes None only when the context is dropped.").set_no_drop();
+        self.port
+            .as_ref()
+            .expect("It becomes None only when the context is dropped.")
+            .set_no_drop();
     }
 
     /// Waits until the transport is closed.
@@ -253,11 +289,14 @@ impl Context {
     ///
     /// TODO: We should actually consider `timeout`
     pub fn wait(mut self, timeout: Option<std::time::Duration>) -> Result<(), Self> {
-        if let Err(multiplexer) =
-            self.multiplexer.take().expect("It becomes None only when the context is dropped.").wait(timeout)
+        if let Err(multiplexer) = self
+            .multiplexer
+            .take()
+            .expect("It becomes None only when the context is dropped.")
+            .wait(timeout)
         {
             self.multiplexer.replace(multiplexer);
-            return Err(self)
+            return Err(self);
         }
 
         self.port.as_ref().unwrap().set_no_drop();
@@ -273,7 +312,10 @@ impl Drop for Context {
     /// This will delete all service objects after calling `disable_garbage_collection()` internally.
     fn drop(&mut self) {
         if !self.cleaned {
-            self.multiplexer.take().expect("It becomes None only when the context is dropped.").shutdown();
+            self.multiplexer
+                .take()
+                .expect("It becomes None only when the context is dropped.")
+                .shutdown();
             // We have to clean all registered service, as some might hold another proxy object inside, which refers this context's port.
             // For such case, we have to make them be dropped first before we unwrap the Arc<BasicPort>
             self.port.as_ref().unwrap().set_no_drop();
@@ -282,11 +324,18 @@ impl Drop for Context {
         }
 
         // Shutdown server after multiplexer
-        self.server.take().expect("It becomes None only when the context is dropped.").shutdown();
-        // Shutdown port after multiplexer
-        Arc::try_unwrap(self.port.take().expect("It becomes None only when the context is dropped."))
-            .unwrap()
+        self.server
+            .take()
+            .expect("It becomes None only when the context is dropped.")
             .shutdown();
+        // Shutdown port after multiplexer
+        Arc::try_unwrap(
+            self.port
+                .take()
+                .expect("It becomes None only when the context is dropped."),
+        )
+        .unwrap()
+        .shutdown();
     }
 }
 

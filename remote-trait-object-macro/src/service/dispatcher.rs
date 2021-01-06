@@ -7,7 +7,7 @@ pub(super) fn generate_dispatcher(
     args: &MacroArgs,
 ) -> Result<TokenStream2, TokenStream2> {
     if args.no_skeleton {
-        return Ok(TokenStream2::new())
+        return Ok(TokenStream2::new());
     }
 
     let env_path = create_env_path();
@@ -29,9 +29,11 @@ pub(super) fn generate_dispatcher(
         let method = match item {
             syn::TraitItem::Method(x) => x,
             non_method => {
-                return Err(
-                    syn::Error::new_spanned(non_method, "Service trait must have only methods").to_compile_error()
+                return Err(syn::Error::new_spanned(
+                    non_method,
+                    "Service trait must have only methods",
                 )
+                .to_compile_error())
             }
         };
         let id_ident = super::id::id_method_ident(source_trait, method);
@@ -58,7 +60,9 @@ pub(super) fn generate_dispatcher(
             .first()
             .ok_or_else(|| syn::Error::new_spanned(method, no_self).to_compile_error())?
         {
-            syn::FnArg::Typed(_) => return Err(syn::Error::new_spanned(method, no_self).to_compile_error()),
+            syn::FnArg::Typed(_) => {
+                return Err(syn::Error::new_spanned(method, no_self).to_compile_error())
+            }
             syn::FnArg::Receiver(syn::Receiver {
                 mutability: Some(_),
                 ..
@@ -76,7 +80,9 @@ pub(super) fn generate_dispatcher(
                 ident: the_iden,
                 subpat: None,
             }));
-            the_let_pattern.elems.push_punct(syn::token::Comma(Span::call_site()));
+            the_let_pattern
+                .elems
+                .push_punct(syn::token::Comma(Span::call_site()));
 
             let arg_type = match arg_source {
                 syn::FnArg::Typed(syn::PatType {
@@ -96,7 +102,9 @@ pub(super) fn generate_dispatcher(
                 type_annotation.elems.push(arg_type.clone());
             }
 
-            type_annotation.elems.push_punct(syn::token::Comma(Span::call_site()));
+            type_annotation
+                .elems
+                .push_punct(syn::token::Comma(Span::call_site()));
 
             let arg_ident = quote::format_ident!("a{}", j + 1);
             let the_arg = if crate::helper::is_ref(arg_type)

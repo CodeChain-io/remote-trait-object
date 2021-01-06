@@ -4,9 +4,12 @@ use crate::helper::path_of_single_ident;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::ToTokens;
 
-pub(super) fn generate_proxy(source_trait: &syn::ItemTrait, args: &MacroArgs) -> Result<TokenStream2, TokenStream2> {
+pub(super) fn generate_proxy(
+    source_trait: &syn::ItemTrait,
+    args: &MacroArgs,
+) -> Result<TokenStream2, TokenStream2> {
     if args.no_proxy {
-        return Ok(TokenStream2::new())
+        return Ok(TokenStream2::new());
     }
 
     let env_path = create_env_path();
@@ -33,9 +36,11 @@ pub(super) fn generate_proxy(source_trait: &syn::ItemTrait, args: &MacroArgs) ->
         let method = match item {
             syn::TraitItem::Method(x) => x,
             non_method => {
-                return Err(
-                    syn::Error::new_spanned(non_method, "Service trait must have only methods").to_compile_error()
+                return Err(syn::Error::new_spanned(
+                    non_method,
+                    "Service trait must have only methods",
                 )
+                .to_compile_error())
             }
         };
         let id_ident = super::id::id_method_ident(source_trait, method);
@@ -52,14 +57,19 @@ pub(super) fn generate_proxy(source_trait: &syn::ItemTrait, args: &MacroArgs) ->
                 syn::FnArg::Receiver(_) => continue, // &self
                 syn::FnArg::Typed(pattern) => {
                     if let syn::Pat::Ident(the_arg) = &*pattern.pat {
-                        arguments_in_tuple.elems.push(syn::Expr::Path(syn::ExprPath {
-                            attrs: Vec::new(),
-                            qself: None,
-                            path: path_of_single_ident(the_arg.ident.clone()),
-                        }));
+                        arguments_in_tuple
+                            .elems
+                            .push(syn::Expr::Path(syn::ExprPath {
+                                attrs: Vec::new(),
+                                qself: None,
+                                path: path_of_single_ident(the_arg.ident.clone()),
+                            }));
                     } else {
-                        return Err(syn::Error::new_spanned(arg, "You must not use a pattern for the argument")
-                            .to_compile_error())
+                        return Err(syn::Error::new_spanned(
+                            arg,
+                            "You must not use a pattern for the argument",
+                        )
+                        .to_compile_error());
                     }
                 }
             }
@@ -68,8 +78,13 @@ pub(super) fn generate_proxy(source_trait: &syn::ItemTrait, args: &MacroArgs) ->
         let the_call = quote! {
             self.handle.call::<#serde_format, _, _>(#id_ident.load(#env_path::ID_ORDERING), &#arguments_in_tuple)
         };
-        the_method.block.stmts.push(syn::Stmt::Expr(syn::Expr::Verbatim(the_call)));
-        imported_struct_impl.items.push(syn::ImplItem::Method(the_method));
+        the_method
+            .block
+            .stmts
+            .push(syn::Stmt::Expr(syn::Expr::Verbatim(the_call)));
+        imported_struct_impl
+            .items
+            .push(syn::ImplItem::Method(the_method));
     }
     imported_struct.extend(imported_struct_impl.to_token_stream());
     imported_struct.extend(quote! {

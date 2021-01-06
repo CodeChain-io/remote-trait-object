@@ -25,16 +25,16 @@ pub fn is_ref(the_type: &syn::Type) -> Result<Option<syn::Type>, String> {
                 String
             })
             .unwrap(),
-        ))
+        ));
     }
 
     match the_type {
         syn::Type::Reference(x) => {
             if x.lifetime.is_some() {
-                return Err("Lifetime exists".to_owned())
+                return Err("Lifetime exists".to_owned());
             }
             if x.mutability.is_some() {
-                return Err("Mutable".to_owned())
+                return Err("Mutable".to_owned());
             }
             match *x.elem {
                 syn::Type::Slice(_) => Ok(Some(

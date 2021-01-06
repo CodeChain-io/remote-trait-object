@@ -52,7 +52,8 @@ impl Multiplexer {
     ) -> MultiplexResult
     where
         TransportReceiver: TransportRecv + 'static,
-        Forwarder: Forward, {
+        Forwarder: Forward,
+    {
         let (request_send, request_recv) = channel::bounded(1);
         let (response_send, response_recv) = channel::bounded(1);
         let receiver_terminator: Option<Mutex<Box<dyn Terminate>>> =
@@ -60,13 +61,17 @@ impl Multiplexer {
 
         let receiver_thread = thread::Builder::new()
             .name(format!("[{}] receiver multiplexer", config.name))
-            .spawn(move || receiver_loop::<Forwarder, TransportReceiver>(transport_recv, request_send, response_send))
+            .spawn(move || {
+                receiver_loop::<Forwarder, TransportReceiver>(
+                    transport_recv,
+                    request_send,
+                    response_send,
+                )
+            })
             .unwrap();
 
         MultiplexResult {
-            request_recv: MultiplexedRecv {
-                recv: request_recv,
-            },
+            request_recv: MultiplexedRecv { recv: request_recv },
             response_recv: MultiplexedRecv {
                 recv: response_recv,
             },
@@ -78,7 +83,11 @@ impl Multiplexer {
     }
 
     pub fn shutdown(mut self) {
-        self.receiver_terminator.take().unwrap().into_inner().terminate();
+        self.receiver_terminator
+            .take()
+            .unwrap()
+            .into_inner()
+            .terminate();
         self.receiver_thread.take().unwrap().join().unwrap();
     }
 
@@ -98,7 +107,7 @@ fn receiver_loop<Forwarder: Forward, Receiver: TransportRecv>(
             Err(err) => {
                 request_send.send(Err(err.clone())).unwrap();
                 response_send.send(Err(err)).unwrap();
-                return
+                return;
             }
             Ok(data) => data,
         };

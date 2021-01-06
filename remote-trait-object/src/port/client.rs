@@ -25,7 +25,11 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(config: Config, transport_send: Arc<dyn TransportSend>, transport_recv: Box<dyn TransportRecv>) -> Self {
+    pub fn new(
+        config: Config,
+        transport_send: Arc<dyn TransportSend>,
+        transport_recv: Box<dyn TransportRecv>,
+    ) -> Self {
         let (joined_event_sender, joined_event_receiver) = bounded(1);
         let callslot_size = SlotId::new(config.call_slots as u32);
         let call_slots = Arc::new(Queue::new(callslot_size.as_usize()));
@@ -63,7 +67,10 @@ impl Client {
 
     pub fn call(&self, packet: PacketView) -> Packet {
         // TODO: handle the error
-        let slot = self.call_slots.pop(self.config.call_timeout).expect("Too many calls on port");
+        let slot = self
+            .call_slots
+            .pop(self.config.call_timeout)
+            .expect("Too many calls on port");
 
         let packet = {
             let mut packet = packet.to_owned();
@@ -72,21 +79,28 @@ impl Client {
         };
 
         // TODO: handle the error
-        self.transport_send.send(packet.buffer(), self.config.call_timeout).unwrap();
+        self.transport_send
+            .send(packet.buffer(), self.config.call_timeout)
+            .unwrap();
         let response_packet = slot.response.recv().expect(
             "counterparty send is managed by client. \n\
         This error might be due to drop after disconnection of the two remote-trait-object contexts. \n\
         Please consider disable_garbage_collection() or explicit drop for the imported services.",
         );
 
-        self.call_slots.push(slot).expect("Client does not close the queue");
+        self.call_slots
+            .push(slot)
+            .expect("Client does not close the queue");
 
         // TODO: handle the error
         response_packet.unwrap()
     }
 
     pub fn shutdown(&mut self) {
-        match self.joined_event_receiver.recv_timeout(time::Duration::from_millis(100)) {
+        match self
+            .joined_event_receiver
+            .recv_timeout(time::Duration::from_millis(100))
+        {
             Err(Timeout) => {
                 panic!(
                     "There may be a deadlock or misuse of Client. Call Client::shutdown after Multiplexer::shutdown"
@@ -123,7 +137,7 @@ fn receive_loop(
             Err(TransportError::Termination) => return,
             Err(_err) => {
                 // TODO: Broadcast the error to all **active** call slots
-                return
+                return;
             }
         };
     }
